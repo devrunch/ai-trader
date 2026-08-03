@@ -4,13 +4,17 @@ Intraday equity signal platform for the Indian market. A tool-using LLM agent re
 technical indicators and news sentiment, then proposes trades with entry, target and stop-loss — every number
 sourced from a deterministic tool, never from the model's own arithmetic.
 
-Three deployable services:
+Three deployable services, each a submodule of this repo:
 
 | Service | Stack | Role |
 |---|---|---|
 | [`ai-trader-signals`](https://github.com/devrunch/ai-trader-signals) | FastAPI, Python 3.12 | Signal engine, chat agent, backtester, indicator maths |
 | [`ai-trader-api`](https://github.com/devrunch/ai-trader-api) | NestJS, TypeScript | Auth, users, broker connections, persistence |
 | [`ai-trader-frontend`](https://github.com/devrunch/ai-trader-frontend) | Next.js 14, Tailwind | Charts (KLineCharts, Lightweight Charts), signal UI |
+
+```bash
+git clone --recurse-submodules https://github.com/devrunch/ai-trader.git
+```
 
 PostgreSQL for storage, Redis for the Celery queue and WebSocket pub/sub, Docker Compose for local and
 production, Caddy in front, AWS (EC2 and Fargate) for deploys.

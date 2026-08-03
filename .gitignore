@@ -8,10 +8,7 @@ __pycache__/
 node_modules/
 .DS_Store
 
-# the three services are their own repos — don't nest them in the umbrella repo
-ai-trader-api/
-ai-trader-frontend/
-ai-trader-signals/
+# NOTE: the three service dirs are git submodules, tracked deliberately — do not ignore them
 
 # internal / client-confidential — do not publish
 docs/client-expects.md
