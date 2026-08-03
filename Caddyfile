@@ -1,0 +1,23 @@
+# Reverse proxy for the whole stack behind one hostname.
+#
+# {$PUBLIC_HOSTNAME} is substituted by deploy.sh at deploy time — it is the
+# instance's own EC2 public DNS name, which does not exist until the instance
+# is launched and changes if it is ever replaced. Nothing here can be a fixed
+# domain.
+#
+# /api/* -> the NestJS API. Everything else -> the Next.js frontend. Serving
+# both under one hostname makes the browser's requests same-origin, so the
+# API's CORS config never has to fire and the auth cookie needs no cross-site
+# cookie attributes.
+{$PUBLIC_HOSTNAME} {
+	encode gzip
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

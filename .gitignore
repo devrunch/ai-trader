@@ -1,0 +1,20 @@
+*.env
+*.env.local
+*.key.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.claude
+node_modules/
+.DS_Store
+
+# the three services are their own repos — don't nest them in the umbrella repo
+ai-trader-api/
+ai-trader-frontend/
+ai-trader-signals/
+
+# internal / client-confidential — do not publish
+docs/client-expects.md
+docs/client-status-report.md
+propmts.adi.md
+CLAUDE.md

@@ -1,0 +1,63 @@
+{
+  "family": "ai-trader-signals-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn":      "arn:aws:iam::YOUR_ACCOUNT_ID:role/ai-trader-signals-task-role",
+  "containerDefinitions": [
+    {
+      "name": "celery-worker",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/ai-trader-signals:latest",
+      "command": ["celery", "-A", "app.worker.celery_app.celery", "worker", "--loglevel=info", "--concurrency=2"],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT",      "value": "production" },
+        { "name": "AWS_REGION",       "value": "ap-south-1" },
+        { "name": "BEDROCK_MODEL_ID", "value": "deepseek.v3.2" },
+        { "name": "BEDROCK_BASE_URL", "value": "https://bedrock-mantle.ap-south-1.api.aws/v1" },
+        { "name": "API_SERVICE_URL",  "value": "http://api.ai-trader.internal:8000" }
+      ],
+      "secrets": [
+        { "name": "SQS_SIGNALS_QUEUE_URL", "valueFrom": "/ai-trader/signals/SQS_SIGNALS_QUEUE_URL" },
+        { "name": "SQS_TASKS_QUEUE_URL",   "valueFrom": "/ai-trader/signals/SQS_TASKS_QUEUE_URL"   },
+        { "name": "NEWS_API_KEY",          "valueFrom": "/ai-trader/signals/NEWS_API_KEY"           },
+        { "name": "INTERNAL_API_KEY",      "valueFrom": "/ai-trader/signals/INTERNAL_API_KEY"       },
+        { "name": "HF_API_TOKEN",          "valueFrom": "/ai-trader/signals/HF_API_TOKEN"           },
+        { "name": "BEDROCK_API_KEY",       "valueFrom": "/ai-trader/signals/BEDROCK_API_KEY"        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/ai-trader-signals",
+          "awslogs-region":        "ap-south-1",
+          "awslogs-stream-prefix": "celery-worker"
+        }
+      }
+    },
+    {
+      "name": "celery-beat",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/ai-trader-signals:latest",
+      "command": ["celery", "-A", "app.worker.celery_app.celery", "beat", "--loglevel=info"],
+      "essential": false,
+      "environment": [
+        { "name": "ENVIRONMENT",     "value": "production" },
+        { "name": "AWS_REGION",      "value": "ap-south-1" },
+        { "name": "API_SERVICE_URL", "value": "http://api.ai-trader.internal:8000" }
+      ],
+      "secrets": [
+        { "name": "SQS_SIGNALS_QUEUE_URL", "valueFrom": "/ai-trader/signals/SQS_SIGNALS_QUEUE_URL" },
+        { "name": "SQS_TASKS_QUEUE_URL",   "valueFrom": "/ai-trader/signals/SQS_TASKS_QUEUE_URL"   }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/ai-trader-signals",
+          "awslogs-region":        "ap-south-1",
+          "awslogs-stream-prefix": "celery-beat"
+        }
+      }
+    }
+  ]
+}

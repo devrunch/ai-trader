@@ -1,0 +1,51 @@
+# Production overlay — applied on top of docker-compose.yml, never in place
+# of it. The base file stays what local dev runs unmodified; this file only
+# adds what a real deployment needs and could never make sense on a laptop:
+# TLS termination, and a public origin baked into the two apps that need one.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# ${PUBLIC_HOSTNAME} is written by deploy.sh right before this runs — see that
+# script for why it cannot be hardcoded here.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+
+  # NEXT_PUBLIC_API_URL is inlined into the JavaScript bundle at `next build`,
+  # not read at container start — so it can only be set as a BUILD arg, and
+  # the frontend image has to be rebuilt on every deploy where the public
+  # hostname could have changed (i.e. every deploy, unless an Elastic IP is
+  # attached and the hostname is therefore stable).
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: https://${PUBLIC_HOSTNAME}
+    environment:
+      NEXT_PUBLIC_API_URL: https://${PUBLIC_HOSTNAME}
+
+  api:
+    environment:
+      FRONTEND_URL: https://${PUBLIC_HOSTNAME}
+
+# The base file already binds signals/api/frontend to 127.0.0.1 only — that is
+# already correct for prod (unreachable from outside the host) and Caddy still
+# reaches them by service name over the compose network regardless, so nothing
+# about those port bindings needs to change here.
+
+volumes:
+  caddy_data:
+  caddy_config:

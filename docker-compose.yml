@@ -1,0 +1,100 @@
+services:
+
+  # ── Python FastAPI signals service ──────────────────────────────────
+  signals:
+    build:
+      context: ./ai-trader-signals
+      dockerfile: ../docker/signals/Dockerfile
+      target: api
+    ports:
+      - "127.0.0.1:8001:8001"
+    env_file: ./ai-trader-signals/.env
+    environment:
+      # Chat agent calls back into NestJS for the user's trading context
+      API_SERVICE_URL: http://api:8000
+    healthcheck:
+      # /ready, not /health. This healthcheck's only job in compose is the
+      # `depends_on: service_healthy` gate below, and the point of a gate is
+      # that dependents do not start against a signals service that cannot
+      # reach market data or SQS. /health is static liveness (it answers even
+      # when every dependency is down) and stays that way — Fargate's task
+      # healthCheck uses it to decide whether to *kill* the container, and a
+      # dependency outage must not do that.
+      # /ready returns 503 when a probe fails; urlopen raises on 503.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Celery worker (runs screener tasks) ─────────────────────────────
+  signals-worker:
+    build:
+      context: ./ai-trader-signals
+      dockerfile: ../docker/signals/Dockerfile
+      target: worker
+    env_file: ./ai-trader-signals/.env
+    environment:
+      API_SERVICE_URL: http://api:8000
+    depends_on:
+      signals:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Celery beat (schedules screener every 15 min market hours) ──────
+  signals-beat:
+    build:
+      context: ./ai-trader-signals
+      dockerfile: ../docker/signals/Dockerfile
+      target: beat
+    env_file: ./ai-trader-signals/.env
+    depends_on:
+      signals:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── NestJS API ───────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./ai-trader-api
+      dockerfile: ../docker/api/Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: ./ai-trader-api/.env
+    environment:
+      SIGNALS_SERVICE_URL: http://signals:8001
+      FRONTEND_URL: http://localhost:3000
+      # In this deployment the in-process poller is the ONLY SQS consumer, so it
+      # is switched on here. It must stay off under serverless.yml, where the
+      # dedicated sqsConsumer Lambda owns the queue — two consumers on one queue
+      # produced duplicate signal documents.
+      SIGNALS_POLLER_ENABLED: "true"
+    depends_on:
+      signals:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ── Next.js frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./ai-trader-frontend
+      dockerfile: ../docker/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
