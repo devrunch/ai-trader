@@ -8,16 +8,20 @@ Three deployable services, each a submodule of this repo:
 
 | Service | Stack | Role |
 |---|---|---|
-| [`ai-trader-signals`](https://github.com/devrunch/ai-trader-signals) | FastAPI, Python 3.12 | Signal engine, chat agent, backtester, indicator maths |
-| [`ai-trader-api`](https://github.com/devrunch/ai-trader-api) | NestJS, TypeScript | Auth, users, broker connections, persistence |
-| [`ai-trader-frontend`](https://github.com/devrunch/ai-trader-frontend) | Next.js 14, Tailwind | Charts (KLineCharts, Lightweight Charts), signal UI |
+| [`ai-trader-signals`](https://github.com/devrunch/ai-trader-signals) | FastAPI, Python 3.12 | Signal engine, chat agent, backtester, indicator maths, live/historical market data |
+| [`ai-trader-api`](https://github.com/devrunch/ai-trader-api) | NestJS, TypeScript | Auth, users, broker session, paper trading, WebSocket gateway, persistence |
+| [`ai-trader-frontend`](https://github.com/devrunch/ai-trader-frontend) | Next.js 14, Tailwind | Trading terminal (KLineCharts), signal UI, chat |
 
 ```bash
 git clone --recurse-submodules https://github.com/devrunch/ai-trader.git
 ```
 
-PostgreSQL for storage, Redis for the Celery queue and WebSocket pub/sub, Docker Compose for local and
-production, Caddy in front, AWS (EC2 and Fargate) for deploys.
+MongoDB (Atlas) for storage, Redis for the Celery queue and the live-tick pub/sub bridge between
+`ai-trader-signals` and `ai-trader-api`, Docker Compose for local and production, Caddy in front (TLS +
+reverse proxy for both HTTP and the WebSocket gateway), a single EC2 instance for deploys.
+
+Real market data: Zerodha Kite Connect for NSE/BSE (real-time WebSocket ticks plus quotes/history/search),
+yfinance as the fallback for everything else and for any symbol Kite can't resolve.
 
 ---
 
@@ -145,18 +149,18 @@ Accounts needed to run it end to end: a broker API (Dhan, Zerodha Kite Connect o
 
 ## Documentation
 
-- [`docs/00-START-HERE.md`](docs/00-START-HERE.md) — orientation
-- [`docs/checklist/`](docs/checklist/00-index.md) — correctness checklists: risk limits, tradability, market
-  hours, signal integrity, honest reporting, chart correctness, agent tools
-- [`docs/agent-roadmap/`](docs/agent-roadmap/README.md) — strategy engine, agentic charting, simulation
+- [`docs/superpowers/specs/`](docs/superpowers/specs/) — design records for major features (Zerodha Kite
+  integration, live price ticks, the in-progress intraday signal-model notes)
+- [`docs/superpowers/plans/`](docs/superpowers/plans/) — the implementation plans those specs shipped through
 - [`DEPLOY.md`](DEPLOY.md) — deployment
 
 ---
 
 ## Status
 
-MVP scope: intraday equity signals, broker connection, authentication. F&O and custom ML models are Phase 2;
-crypto and multi-exchange are Phase 3.
+Pre-production. Live Zerodha Kite Connect data (NSE/BSE, real-time ticks + history + search) and a real-time
+WebSocket price feed are built and deployed. Options/F&O and a trained intraday signal model are next; crypto
+and other exchanges remain out of scope for now.
 
 ---
 
