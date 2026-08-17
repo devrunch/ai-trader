@@ -1,5 +1,16 @@
 services:
 
+  # ── Redis: live-tick pub/sub between signals and api ────────────────
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
   # ── Python FastAPI signals service ──────────────────────────────────
   signals:
     build:
@@ -27,6 +38,9 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
 
   # ── Celery worker (runs screener tasks) ─────────────────────────────
   signals-worker:
@@ -73,6 +87,8 @@ services:
       # produced duplicate signal documents.
       SIGNALS_POLLER_ENABLED: "true"
     depends_on:
+      redis:
+        condition: service_healthy
       signals:
         condition: service_healthy
     healthcheck:
