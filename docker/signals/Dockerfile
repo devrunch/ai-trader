@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && npm install -g diascript@0.0.7 \
+    && npm install -g diascript@0.0.9 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
