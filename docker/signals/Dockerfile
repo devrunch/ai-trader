@@ -5,7 +5,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     NUMBA_DISABLE_JIT=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    build-essential curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g diascript@latest \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
