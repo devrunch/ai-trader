@@ -14,5 +14,7 @@ node_modules/
 # internal / client-confidential — do not publish
 docs/client-expects.md
 docs/client-status-report.md
+docs/client-status-report.html
+docs/AI-Trader-Status-Report.pdf
 propmts.adi.md
 CLAUDE.md
