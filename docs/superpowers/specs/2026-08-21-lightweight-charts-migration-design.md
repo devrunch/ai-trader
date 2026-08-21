@@ -36,6 +36,12 @@ Both are **executable code reaching the server**, which is exactly what [[projec
 
 **Explicit flag for later:** if this platform ever becomes multi-tenant, agent-generated (and possibly user-pasted) Pine execution needs re-review — a compromised or malicious script's blast radius changes completely once other users' data is reachable from the same backend, even behind a sandbox. Not blocking now; should not be forgotten later.
 
+## License: `pinets` is AGPL-3.0-only
+
+Verified directly (`npm view pinets license`, 2026-08-21): the real PineTS package (LuxAlgo, `npm i pinets`) is AGPL-3.0-only — not MIT/Apache like the rest of this stack. AGPL's network-use clause is specifically written to close the "SaaS loophole" plain GPL has: running modified AGPL code as a network service that users interact with remotely can trigger the same source-disclosure obligation as literally distributing it, even without ever handing anyone a copy of the code itself.
+
+**User's call, recorded:** proceed, on the basis that this is genuinely personal/single-operator use — no other party is ever granted access to the running service, not merely "not distributed" in isolation (that framing alone doesn't fully address AGPL's network clause, which exists to cover exactly that case). Ties to the same single-user-platform basis already used for the security-model call above. **Same trigger to revisit:** the moment this platform has a second real user, this needs an actual legal read, not an assumption — not blocking implementation now, but not something to forget either. A wrapper package (`@backtest-kit/pinets`, MIT) exists but its actual relationship to the real AGPL engine is unverified and not relied on here.
+
 ## Decoupling: the `ChartAdapter` interface (unchanged from the prior revision)
 
 Still the right call, independent of the diascript/PineTS swap. Every consumer (`CandlestickChart.tsx`, `terminal/page.tsx`, `use-chart-layout.ts`, `DrawingToolbar.tsx`) depends on one interface, never on `lightweight-charts` types directly. A future rendering-library change stays "write a new class implementing `ChartAdapter`."
