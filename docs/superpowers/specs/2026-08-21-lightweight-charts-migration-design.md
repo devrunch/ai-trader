@@ -10,9 +10,11 @@ Replace klinecharts (rendering) **and** diascript (indicator engine) with:
 - **Lightweight Charts** (`lightweight-charts`, already installed at `5.2.0`, Apache-2.0) for rendering — candles and volume only, natively, no calc engine needed for either.
 - **PineTS** for everything else — any indicator beyond candle+volume runs as real Pine Script, executed in a sandbox, attached lazily (only when actually asked for, never a pre-populated catalog).
 
-**Not in scope (still deferred, unaffected by this revision):**
-- Pine `strategy.*` order execution / paper-trading fills — still a later phase; this spec covers indicator rendering only. (Revisit: the original PineTS sub-project scoped indicators+strategy together — confirm with user whether strategy execution rides along with this effort or stays a follow-up, before Task work starts on it.)
-- Any change to paper-trading logic, signal generation, or the chat agent's tool surface beyond swapping `generate_custom_indicator`'s output language.
+**In scope, confirmed by user:** Pine `strategy.*` order execution driving real paper-trade fills — not deferred. Design below in "Strategy execution & paper trading."
+
+**Not in scope:**
+- Any change to `PaperTradingService`'s own order-placement/risk/execution logic (`ai-trader-api/src/portfolio/`) — Pine strategies call into it exactly as any other order source does, through its existing `placeOrder()` contract. No new order-placement path, no bypass of its risk guards.
+- Live/real-money order execution — paper trading only, matching everything else in this product today.
 
 ## Why diascript can't just be ported (confirmed, not assumed)
 
@@ -84,7 +86,19 @@ interface AttachedIndicator {
 }
 ```
 
-replacing the current `indicators: string[]` field. This is a breaking schema change to real stored data (same category as the drawings-format migration already planned) — existing saved layouts' `indicators` arrays (just names like `["EMA", "VOL"]`) have no Pine source to migrate *to*, since those names pointed at calc engines that no longer exist. The honest migration is: **drop stored indicator names on migration, keep drawings.** A user's trend lines and saved marks carry forward; their indicator toggles reset to the new default (candle+volume) and get re-added if they want them. This needs to be said to the user plainly at migration time, not silently done — flagged as a decision to confirm, not assumed here.
+replacing the current `indicators: string[]` field. **Confirmed by user: no real users on the platform yet, so this is a clean schema cutover, not a data migration** — no dry-run script, no preserve-old-data path needed for either the indicator-schema change or the klinecharts→LWC drawings-format change from the prior revision. Any `chart-layouts` documents in the dev database from this session's own testing get dropped, not converted.
+
+## Strategy execution & paper trading (new)
+
+Existing infrastructure, confirmed by reading it directly (`ai-trader-api/src/portfolio/paper-trading.service.ts`): `PaperTradingService.placeOrder(userId, dto: PlaceOrderDto)` already takes `{ symbol, exchange, side, type, quantity, limitPrice?, stopLoss?, clientOrderId?, decisionTurnId? }`, is idempotent on `clientOrderId` (a repeat with the same key returns the original order, never a second position — checked before the write, the unique index makes it safe under a race), runs `RiskLimitsService`'s guard on BUY orders, and executes market orders immediately via `OrderExecutionService`. This is the one and only door a Pine strategy's orders go through — no new order-placement path gets built.
+
+**The design:** a new `PineStrategyRunner` (home: `ai-trader-signals`, since that's where the existing Celery-scheduled paper-trading square-off already lives, per `paper-trading.service.ts`'s own square-off doc comment) that:
+1. Runs a Pine strategy script through the same sandboxed PineTS execution as indicators (Step 2 below), but reads `strategy.entry`/`strategy.exit`/`strategy.close` calls out of the execution as an event stream instead of (or alongside) plot data.
+2. **Gates every order on `barstate.isconfirmed`.** This is the non-negotiable rule from Pine strategy semantics: acting on the forming (unconfirmed) bar lets a strategy "discover" edges that repaint into profitability on replay and never hold up live. The runner reads `barstate.isconfirmed` explicitly per bar and only emits an order when it's `true`.
+3. Translates each confirmed strategy event into a `PlaceOrderDto` and calls the existing `PaperTradingService.placeOrder()` — `clientOrderId` built deterministically from `(strategy instance id, bar timestamp, order sequence within that bar)`, so a re-run of the same historical range (backtest replay, or a crash-and-resume) is idempotent by construction, using the guarantee `placeOrder` already provides rather than building a second one.
+4. `decisionTurnId` carries which Pine strategy (and which chat turn, if agent-generated) produced the order — same field the chat agent's other order-placing paths already populate, so a paper trade's origin is traceable the same way everywhere.
+
+No new risk-limit logic, no new execution logic, no new position math — all of that stays exactly as `RiskLimitsService`/`OrderExecutionService` already do it. The only new code is: read confirmed-bar strategy events out of the sandbox, and call the door that already exists.
 
 ## Current state (unchanged from the prior scan, still accurate)
 
@@ -98,39 +112,42 @@ replacing the current `indicators: string[]` field. This is a breaking schema ch
 
 ## Risk-ranked pieces
 
-1. **PineTS sandbox** (highest risk, new). Isolated worker/subprocess, resource-capped, structured-clone boundary. This is real infrastructure, not a config flag — get this wrong and "agent-generated Pine" is an open RCE path, not a bounded one.
-2. **PineTS → LWC rendering.** Pine's `plot()`/`plotshape()`/`hline()`/`fill()`/`bgcolor()` surface is wider than LWC's native series types — bands, markers, background shading, and fills need LWC's Series Primitives API (`ISeriesPrimitive`, confirmed present in the installed package's types) written from scratch. No adapter exists anywhere for this yet (diascript's klinecharts adapter is not reusable — it read klinecharts-computed pixel coordinates, a different problem).
-3. **Drawing tools + saved-layout migration**, including the new indicator-schema change above — real stored user data, needs a stated (not silent) migration decision.
-4. **`DataLoader` → LWC's data model.** History paging + live ticks, mechanical but touches a path that's easy to silently break.
-5. **Multi-pane placement.** Mechanical, lowest risk.
+1. **PineTS sandbox** (highest risk). Isolated worker/subprocess, resource-capped, structured-clone boundary. This is real infrastructure, not a config flag — get this wrong and "agent-generated Pine" is an open RCE path, not a bounded one.
+2. **Strategy execution's confirmed-bar rule.** Getting `barstate.isconfirmed` gating wrong doesn't crash anything visibly — it silently produces a strategy that backtests brilliantly and never works live, which is worse than a crash because it isn't caught by testing that only checks "did an order get placed."
+3. **PineTS → LWC rendering.** Pine's `plot()`/`plotshape()`/`hline()`/`fill()`/`bgcolor()` surface is wider than LWC's native series types — bands, markers, background shading, and fills need LWC's Series Primitives API (`ISeriesPrimitive`, confirmed present in the installed package's types) written from scratch. No adapter exists anywhere for this yet.
+4. **Drawing tools + saved-layout schema cutover** — simplified since there's no real data to migrate (see above), but still real code spanning two repos.
+5. **`DataLoader` → LWC's data model.** History paging + live ticks, mechanical but touches a path that's easy to silently break.
+6. **Multi-pane placement.** Mechanical, lowest risk.
 
 ## Sequenced approach
 
-1. **Extract `ChartAdapter`, klinecharts implementation behind it.** Pure refactor, zero behavior change — unchanged from the prior revision. Ships the decoupling before either the rendering-library or the indicator-engine swap touches anything.
-2. **PineTS sandbox**, built and tested standalone, independent of the chart: given Pine source + OHLCV bars, returns plot data or a structured error, inside an isolated worker/subprocess with resource caps and no DB/credential/filesystem/network access. This has to work and be trusted on its own before anything downstream depends on it.
-3. **PineTS-to-LWC render mapping**: the primitives for band/marker/background/fill, plus the direct cases (`plot()` → line/histogram series). Tested against known Pine scripts with known expected output (e.g. a plain EMA script), not just "it runs without throwing."
-4. **New `LightweightChartsAdapter`** implementing `ChartAdapter`: candle + volume as native series (default view), `attachPineIndicator()` wired to Steps 2+3, at both mount sites.
-5. **`ChartDataSource` for LWC**: history paging + live-tick path. Manual browser check specifically (same reasoning as before — easy to silently break).
-6. **Drawing tools**, rebuilt against LWC primitives — same seven overlay kinds as before, this part is unaffected by the diascript/PineTS change.
-7. **Saved-layout migration**: both the drawings-format change (klinecharts-shaped → LWC-native, `format`/`adapterId`-tagged) and the new `indicators: AttachedIndicator[]` schema replacing `indicators: string[]`, with the drop-and-reset decision from "Saved-layout schema change" confirmed with the user before the migration script runs for real. Spans `ai-trader-frontend` and `ai-trader-api`'s `chart-layouts` module.
-8. **Chat agent tool swap**: `generate_custom_indicator` (`ai-trader-signals/app/signals/agent/tools/graph_agent.py`) stops writing diascript and starts writing Pine — same "write, validate, one retry on a real error, hand a validated result to the frontend" shape, new target language. Its existing worked-examples-in-the-prompt pattern (Gaussian filter, wavelet, SMC) needs re-authoring for Pine syntax; the underlying "never fake sophistication" rule carries over unchanged.
-9. **Multi-pane placement**, last, lowest risk.
+1. **Extract `ChartAdapter`, klinecharts implementation behind it.** Pure refactor, zero behavior change. Ships the decoupling before either the rendering-library or the indicator-engine swap touches anything.
+2. **PineTS sandbox**, built and tested standalone, independent of the chart: given Pine source + OHLCV bars, returns plot data (for indicator scripts) or a strategy-event stream (for strategy scripts) or a structured error — inside an isolated worker/subprocess with resource caps and no DB/credential/filesystem/network access. Has to work and be trusted on its own before anything downstream depends on it.
+3. **`PineStrategyRunner`**: confirmed-bar-only event reading from Step 2's sandbox, translated into `PaperTradingService.placeOrder()` calls with deterministic `clientOrderId`s. Built and tested against the existing paper-trading service directly — this step needs zero chart/rendering work to be fully testable.
+4. **PineTS-to-LWC render mapping**: the primitives for band/marker/background/fill, plus the direct cases (`plot()` → line/histogram series). Tested against known Pine scripts with known expected output.
+5. **New `LightweightChartsAdapter`** implementing `ChartAdapter`: candle + volume as native series (default view), `attachPineIndicator()` wired to Steps 2+4, at both mount sites.
+6. **`ChartDataSource` for LWC**: history paging + live-tick path. Manual browser check specifically.
+7. **Drawing tools**, rebuilt against LWC primitives — same seven overlay kinds as before.
+8. **Saved-layout schema cutover**: drawings format (klinecharts-shaped → LWC-native, `format`/`adapterId`-tagged) and `indicators: AttachedIndicator[]` replacing `indicators: string[]`. Clean cutover per the confirmed no-real-data decision — no migration script. Spans `ai-trader-frontend` and `ai-trader-api`'s `chart-layouts` module.
+9. **Chat agent tool swap**: `generate_custom_indicator` (`ai-trader-signals/app/signals/agent/tools/graph_agent.py`) stops writing diascript and starts writing Pine. Same "write, validate, one retry on a real error, hand a validated result to the frontend" shape, new target language. Its worked-examples-in-the-prompt pattern (Gaussian filter, wavelet, SMC) needs re-authoring for Pine syntax; "never fake sophistication" carries over unchanged.
+10. **Multi-pane placement**, last, lowest risk.
 
 ## Decisions made in this spec (flagged for user check)
 
-- **Diascript retired**, not archived-but-kept. If this turns out wrong, its code still exists at the `devrunch/diascript` git history and this session's chat log — recoverable, but the plan should not carry dead-code maintenance for it.
-- **Saved indicator names are dropped, not migrated**, on the saved-layout migration (see above) — needs explicit user confirmation before that migration script runs for real, not just an implementation-time assumption.
-- **Agent-generated Pine is in scope from Task 1**, not deferred to "later once curated-only is proven safe" — per the user's explicit call, on the stated single-user-platform basis. The sandbox (Step 2) is the control, not a curated-only allowlist.
-- **`strategy.*`/paper-trading execution stays out of this spec's task list** pending explicit confirmation it rides along now vs. later (see Goal section) — flagged as open, not decided.
+- **Diascript retired**, not archived-but-kept. Recoverable from the `devrunch/diascript` git history and this session's chat log if this turns out wrong, but the plan carries no dead-code maintenance for it.
+- **No data migration for saved chart layouts** — confirmed no real users yet; both the drawings-format and indicator-schema changes are clean cutovers, no dry-run/preserve-old-data tooling built.
+- **Agent-generated Pine is in scope from the start**, not deferred to "curated-only, proven safe first." Per the user's explicit call, on the stated single-user-platform basis. The sandbox (Step 2) is the control, not a curated allowlist — see "Explicit flag for later" above for the multi-tenant caveat.
+- **Strategy/paper-trading execution is in scope now**, confirmed by user — not a follow-up phase. Built entirely on top of the existing `PaperTradingService.placeOrder()` contract, no new order-placement path.
 
 ## Testing strategy per step
 
 - Step 1: no functional changes expected — manual regression check in a real browser.
 - Step 2: unit tests against the sandbox in isolation — a known-good script returns correct plot data; a script that spins forever gets killed by the CPU cap; a script that tries to reach the filesystem/network fails closed; malformed Pine returns a structured parse error, not a crash.
-- Step 3: known Pine scripts (e.g. a plain EMA, a script using `plotshape`, one using `fill`) render matching hand-computed expected output.
-- Step 4: default-view manual check — only candles + volume, nothing else, on a fresh chart.
-- Step 5: manual browser verification of live ticks and pan-back history loading.
-- Step 6: same seven overlay kinds verified as before.
-- Step 7: migration script dry-run mode; manual confirmation that a pre-migration layout's drawings survive and its indicator list resets cleanly (per the confirmed drop-and-reset decision).
-- Step 8: the graph-generation subagent's own worked examples (re-authored for Pine) validate against the real PineTS sandbox before shipping — same rigor this session already applied to diascript's worked examples.
-- Step 9: manual pane-placement verification, same as before.
+- Step 3: a strategy script run against a fixed historical bar sequence produces the exact expected sequence of `placeOrder()` calls, none of them on an unconfirmed bar; re-running the identical range produces zero new orders (idempotency via `clientOrderId`), verified against `PaperTradingService` directly, no mocking.
+- Step 4: known Pine scripts (a plain EMA, one using `plotshape`, one using `fill`) render matching hand-computed expected output.
+- Step 5: default-view manual check — only candles + volume, nothing else, on a fresh chart.
+- Step 6: manual browser verification of live ticks and pan-back history loading.
+- Step 7: same seven overlay kinds verified as before.
+- Step 8: manual confirmation of a working save/restore round-trip on the new schema (nothing to migrate, but the new shape itself needs a real save-then-reload check).
+- Step 9: the graph-generation subagent's own worked examples (re-authored for Pine) validate against the real PineTS sandbox before shipping — same rigor this session already applied to diascript's worked examples.
+- Step 10: manual pane-placement verification, same as before.
