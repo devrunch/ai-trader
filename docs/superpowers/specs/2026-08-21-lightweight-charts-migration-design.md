@@ -94,6 +94,20 @@ interface AttachedIndicator {
 
 replacing the current `indicators: string[]` field. **Confirmed by user: no real users on the platform yet, so this is a clean schema cutover, not a data migration** — no dry-run script, no preserve-old-data path needed for either the indicator-schema change or the klinecharts→LWC drawings-format change from the prior revision. Any `chart-layouts` documents in the dev database from this session's own testing get dropped, not converted.
 
+## PineTS's real API (verified against its docs, 2026-08-21 — not assumed)
+
+```ts
+new PineTS(source: IProvider | OhlcvBar[], tickerId?, timeframe?, limit?, sDate?, eDate?);
+// OhlcvBar: { open, high, low, close, volume, openTime } — ms epoch, NOT diascript's seconds convention
+await pineTS.run(source: string, n?: number): Promise<Context>;
+// Context: { result, data, plots, alerts, warnings, idx, marketData, strategy, ... }
+// context.strategy: { opentrades: Trade[], closedtrades: Trade[], pending_orders: Order[] }
+```
+
+Two facts that directly shape the strategy design below:
+- **No built-in timeout, CPU cap, or sandboxing of any kind** — confirmed absent from the docs. Everything in "Security model" above (isolated worker/subprocess, resource caps) is entirely on us to build; PineTS provides none of it.
+- **Orders already fill on the next bar's open, by construction** — "you place an order on bar N — it goes onto `pending_orders`; on bar N+1's open, the engine processes it." For a backtest over historical bars, this alone prevents same-bar repainting, since every bar in that array is already fully known. The place this still needs an explicit guard is **live** trading: the runner must only feed PineTS a new bar once it has actually closed (a new confirmed candle exists), never re-run against a still-forming bar just because a live tick moved its price — matching how the chart's own live-tick path already treats the forming candle as provisional (`CandlestickChart.tsx`'s `pushLiveTick`, mutated in place, never a new bar until the period rolls over). `barstate.isconfirmed` inside the Pine script is Pine's own way of expressing this; the runner's job is to not even present an unconfirmed bar as if it were final.
+
 ## Strategy execution & paper trading (new)
 
 Existing infrastructure, confirmed by reading it directly (`ai-trader-api/src/portfolio/paper-trading.service.ts`): `PaperTradingService.placeOrder(userId, dto: PlaceOrderDto)` already takes `{ symbol, exchange, side, type, quantity, limitPrice?, stopLoss?, clientOrderId?, decisionTurnId? }`, is idempotent on `clientOrderId` (a repeat with the same key returns the original order, never a second position — checked before the write, the unique index makes it safe under a race), runs `RiskLimitsService`'s guard on BUY orders, and executes market orders immediately via `OrderExecutionService`. This is the one and only door a Pine strategy's orders go through — no new order-placement path gets built.
@@ -101,7 +115,7 @@ Existing infrastructure, confirmed by reading it directly (`ai-trader-api/src/po
 **The design:** a new `PineStrategyRunner` (home: `ai-trader-signals`, since that's where the existing Celery-scheduled paper-trading square-off already lives, per `paper-trading.service.ts`'s own square-off doc comment) that:
 1. Runs a Pine strategy script through the same sandboxed PineTS execution as indicators (Step 2 below), but reads `strategy.entry`/`strategy.exit`/`strategy.close` calls out of the execution as an event stream instead of (or alongside) plot data.
 2. **Gates every order on `barstate.isconfirmed`.** This is the non-negotiable rule from Pine strategy semantics: acting on the forming (unconfirmed) bar lets a strategy "discover" edges that repaint into profitability on replay and never hold up live. The runner reads `barstate.isconfirmed` explicitly per bar and only emits an order when it's `true`.
-3. Translates each confirmed strategy event into a `PlaceOrderDto` and calls the existing `PaperTradingService.placeOrder()` — `clientOrderId` built deterministically from `(strategy instance id, bar timestamp, order sequence within that bar)`, so a re-run of the same historical range (backtest replay, or a crash-and-resume) is idempotent by construction, using the guarantee `placeOrder` already provides rather than building a second one.
+3. Reads newly-filled entries out of `context.strategy.opentrades`/`closedtrades` after each `run()` (fields confirmed from PineTS's own docs: `entry_id`, `entry_price`, `entry_bar_index`, `entry_time`, `size` signed by direction, `exit_*` once closed) and translates each into a `PlaceOrderDto` — `clientOrderId` built deterministically from `(strategy instance id, entry_bar_index, entry_id)`, so a re-run of the same historical range (backtest replay, or a crash-and-resume) is idempotent by construction, using the guarantee `placeOrder` already provides rather than building a second one.
 4. `decisionTurnId` carries which Pine strategy (and which chat turn, if agent-generated) produced the order — same field the chat agent's other order-placing paths already populate, so a paper trade's origin is traceable the same way everywhere.
 
 No new risk-limit logic, no new execution logic, no new position math — all of that stays exactly as `RiskLimitsService`/`OrderExecutionService` already do it. The only new code is: read confirmed-bar strategy events out of the sandbox, and call the door that already exists.
