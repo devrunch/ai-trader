@@ -1,9 +1,12 @@
 [submodule "ai-trader-signals"]
 	path = ai-trader-signals
 	url = git@github-devrunch:devrunch/ai-trader-signals.git
+	branch = main
 [submodule "ai-trader-api"]
 	path = ai-trader-api
 	url = git@github-devrunch:devrunch/ai-trader-api.git
+	branch = main
 [submodule "ai-trader-frontend"]
 	path = ai-trader-frontend
 	url = git@github-devrunch:devrunch/ai-trader-frontend.git
+	branch = master
