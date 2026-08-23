@@ -1,28 +1,43 @@
+# Everything needed only to INSTALL, never shipped: the C/C++ toolchain
+# numpy/pandas' native extensions need to build, and curl (only used to
+# fetch the nodesource setup script). Kept out of the runtime stage below --
+# on a 2GB box, build-essential alone was a few hundred MB the image never
+# needed to carry once the wheels were already built.
+FROM python:3.13-slim AS deps
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# The pine sandbox is a separate Node subproject (its own package.json,
+# spawned as a subprocess by app/signals/pine/sandbox.py) -- installed here,
+# in the stage that has npm, then copied into the runtime stage below.
+COPY app/pine_sandbox/package.json app/pine_sandbox/package-lock.json ./app/pine_sandbox/
+RUN cd app/pine_sandbox && npm ci --omit=dev
+
+# The actual runtime image. Node itself still ships (the sandbox spawns it
+# at request time) -- only the compiler toolchain used to build things does
+# not.
 FROM python:3.13-slim AS base
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     NUMBA_DISABLE_JIT=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl \
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && npm install -g diascript@0.0.11 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
+COPY --from=deps /install /usr/local
+COPY --from=deps /app/app/pine_sandbox/node_modules ./app/pine_sandbox/node_modules
 COPY . .
-
-# The pine sandbox is a separate Node subproject (its own package.json,
-# spawned as a subprocess by app/signals/pine/sandbox.py) -- npm install -g
-# above only covers diascript, not this. Without this step the image builds
-# and starts cleanly but every Pine indicator silently fails at run time
-# with "Cannot find package 'pinets'", swallowed by the caller with no
-# visible error (found live: SMA/EMA rendered nothing on a fresh deploy).
-RUN cd app/pine_sandbox && npm ci --omit=dev
 
 RUN groupadd --system --gid 1001 appuser && \
     useradd --system --uid 1001 --gid appuser appuser && \
