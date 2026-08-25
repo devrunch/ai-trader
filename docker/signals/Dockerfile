@@ -21,6 +21,12 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 COPY app/pine_sandbox/package.json app/pine_sandbox/package-lock.json ./app/pine_sandbox/
 RUN cd app/pine_sandbox && npm ci --omit=dev
 
+# Same pattern, same reason -- app/dukascopy_bridge wraps dukascopy-node
+# (no Python equivalent), spawned as a one-shot subprocess by
+# app/market/providers/dukascopy_bridge.py.
+COPY app/dukascopy_bridge/package.json app/dukascopy_bridge/package-lock.json ./app/dukascopy_bridge/
+RUN cd app/dukascopy_bridge && npm ci --omit=dev
+
 # The actual runtime image. Node itself still ships (the sandbox spawns it
 # at request time) -- only the compiler toolchain used to build things does
 # not.
@@ -37,6 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 
 COPY --from=deps /install /usr/local
 COPY --from=deps /app/app/pine_sandbox/node_modules ./app/pine_sandbox/node_modules
+COPY --from=deps /app/app/dukascopy_bridge/node_modules ./app/dukascopy_bridge/node_modules
 COPY . .
 
 RUN groupadd --system --gid 1001 appuser && \
