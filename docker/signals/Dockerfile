@@ -65,7 +65,16 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", 
 
 # Celery worker
 FROM base AS worker
-CMD ["celery", "-A", "app.worker.celery_app.celery", "worker", "--loglevel=info", "--concurrency=2"]
+# One prefork child, not two. Every scheduled task is hourly or rarer
+# (news at :00, drift at :30, reddit sentiment on odd hours at :45, the
+# overview twice a day) and the screener is every 15 min -- none of them
+# needs to run alongside another, so the second child was ~145MB resident
+# to serialize work that was already effectively serial. That mattered:
+# the box runs at ~60MB free with 1GB in swap, and the Pine sandbox's Node
+# child (43MB) was being OOM-killed mid-request, which surfaced as
+# indicators failing to load in the terminal. Same reasoning as the api
+# stage above -- raise the instance size before raising this.
+CMD ["celery", "-A", "app.worker.celery_app.celery", "worker", "--loglevel=info", "--concurrency=1"]
 
 # Celery beat scheduler
 FROM base AS beat
