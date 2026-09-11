@@ -54,13 +54,9 @@ USER appuser
 # FastAPI server
 FROM base AS api
 EXPOSE 8001
-# One worker, not two. The task is provisioned at "cpu": "512" — half a vCPU
-# (deploy/fargate/signals-task.json) — so two uvicorn workers do not double
-# throughput, they contend for the same half core and double the memory.
-# The blocking vendor calls are offloaded to a thread pool that main.py bounds
-# at 16 threads on the startup hook, which is where the concurrency for
-# I/O-bound yfinance work now comes from. Raise the CPU allocation before
-# raising the worker count.
+# One worker: the box is small, and a second uvicorn worker doubles memory
+# without adding throughput. Blocking vendor calls run on the 16-thread pool
+# main.py sets up at startup, which is where the I/O concurrency comes from.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
 
 # Celery worker

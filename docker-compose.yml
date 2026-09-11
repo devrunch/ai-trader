@@ -81,11 +81,6 @@ services:
     environment:
       SIGNALS_SERVICE_URL: http://signals:8001
       FRONTEND_URL: http://localhost:3000
-      # In this deployment the in-process poller is the ONLY SQS consumer, so it
-      # is switched on here. It must stay off under serverless.yml, where the
-      # dedicated sqsConsumer Lambda owns the queue — two consumers on one queue
-      # produced duplicate signal documents.
-      SIGNALS_POLLER_ENABLED: "true"
     depends_on:
       redis:
         condition: service_healthy
