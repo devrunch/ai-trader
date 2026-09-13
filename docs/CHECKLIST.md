@@ -109,7 +109,7 @@ Order matters: each step creates the headroom the next one needs. Details: [arch
 ## CI/CD — GitHub Actions
 All four repos are public, so Actions minutes are free and unlimited.
 
-- [ ] **C1 · Tests on every push and pull request**
+- [x] **C1 · Tests on every push and pull request** — 2026-09-13
   - **Why:** there's no CI; a broken commit is found at deploy time, on the live box.
   - **Done when:** each repo runs its checks on push and PR — signals: `ruff` + `pytest`; api: `tsc` + `eslint` + `jest`; frontend: `tsc` + `eslint` + `vitest` — and a red run is visible on the commit.
 
@@ -177,6 +177,8 @@ Things only you can do, from an AWS or third-party account.
 
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
+
+- 2026-09-13 · C1 · CI on all three repos (free: the repos are public). signals: ruff + pytest (597); api: tsc + eslint + jest (189); frontend: tsc + eslint + vitest (185). Fixed what CI surfaced: 8 pre-existing lint errors, and a bare `pytest` that couldn't import `app`. The two media-query hooks now use `useSyncExternalStore` instead of reading matchMedia in an effect. All three runs green. · `ai-trader-signals@758b9cb`, `ai-trader-api@477b2c2`, `ai-trader-frontend@85e338a`
 
 - 2026-09-13 · F3 · SQS removed. Signals POST to `/api/internal/signals` (401 without key, 400 on bad payload, verified live); the API's SQS poller, `@aws-sdk/client-sqs` and AWS settings removed; Celery broker moved to Redis; readiness no longer probes SQS. Live: a job sent from the beat container through Redis ran on the worker in 3 s, and Healthchecks `drift-check` went 1 → 2 pings. Tests: signals 597, api 189. · `ai-trader-signals@adfeb24`, `ai-trader-api@7218bde`
 
