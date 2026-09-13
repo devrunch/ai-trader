@@ -4,7 +4,7 @@
 
 **Answer.** Yes, with room to spare. The box isn't too small. It's carrying about 490 MB of overhead that does no product work: the Docker runtime, and two extra copies of the Python interpreter for Celery. Removing that returns ~400 MB, which is more than the news engine needs.
 
-**Where this stands (2026-09-13).** Steps 0-4 of [§7](#7-the-order-to-do-it-in) have shipped, and Celery is gone: the six cheap jobs run from APScheduler inside `signals`, and the news pipeline runs in `newsd`, its own process, which idles at **36 MB** against the 283 MB the Celery worker and beat cost between them. `docs/CHECKLIST.md` tracks the rest.
+**Where this stands (2026-09-13).** Steps 0-7 of [§7](#7-the-order-to-do-it-in) have shipped. Celery is gone (six cheap jobs on APScheduler inside `signals`; the news pipeline in `newsd`, idling at 36 MB against the 283 MB the worker and beat cost) and **so is Docker** — every service is a systemd unit, with Caddy and Redis as distro packages. Memory used on the box went 1079 MB to **666 MB**, leaving 1168 MB available; the report's predicted ~1 GB free was right. What remains is the news engine itself: steps 8-9, tracked in `docs/CHECKLIST.md`.
 
 **How this was decided.** Two agents argued opposite positions against the real codebase: one for consolidating on the box, one for offloading periodic work to free external compute (Lambda, EventBridge, Cloudflare Workers). They then rebutted each other. Every number below was measured on the running box, not estimated. The debate, including what each side conceded, is in [§3](#3-the-debate).
 

@@ -1,0 +1,26 @@
+# The NestJS API: auth, portfolio, watchlists, the Socket.IO gateway, and the
+# stores the Python jobs publish into.
+[Unit]
+Description=AI Trader API
+After=network-online.target redis-server.service
+Wants=network-online.target redis-server.service
+
+[Service]
+Type=exec
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-trader/ai-trader-api
+EnvironmentFile=/home/ubuntu/ai-trader/ai-trader-api/.env
+# After the .env, so these win: the compose network is gone and everything
+# it addressed by service name is now on the loopback.
+Environment=NODE_ENV=production
+Environment=PORT=8000
+Environment=SIGNALS_SERVICE_URL=http://127.0.0.1:8001
+Environment=REDIS_URL=redis://127.0.0.1:6379/0
+# Written by deploy.sh from the instance's own public hostname.
+EnvironmentFile=-/home/ubuntu/ai-trader/.deploy-state/public.env
+ExecStart=/usr/bin/node dist/main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

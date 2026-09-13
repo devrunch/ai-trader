@@ -1,0 +1,23 @@
+# The Next.js server, running the standalone bundle CI built (this box cannot
+# afford `next build`). `current` is a symlink into releases/<sha>, so a
+# rollback is a symlink flip and a restart.
+[Unit]
+Description=AI Trader frontend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-trader/frontend/current
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Loopback only: Caddy is the only thing that should reach this.
+Environment=HOSTNAME=127.0.0.1
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -16,9 +16,9 @@ Three deployable services, each a submodule of this repo:
 git clone --recurse-submodules https://github.com/devrunch/ai-trader.git
 ```
 
-MongoDB (Atlas) for storage, Redis for the Celery queue and the live-tick pub/sub bridge between
-`ai-trader-signals` and `ai-trader-api`, Docker Compose for local and production, Caddy in front (TLS +
-reverse proxy for both HTTP and the WebSocket gateway), a single EC2 instance for deploys.
+MongoDB (Atlas) for storage, Redis for the schedulers' job stores and the live-tick pub/sub bridge between
+`ai-trader-signals` and `ai-trader-api`, Caddy in front (TLS + reverse proxy for both HTTP and the WebSocket
+gateway), a single EC2 instance where every service is a systemd unit (see DEPLOY.md).
 
 Real market data: Zerodha Kite Connect for NSE/BSE (real-time WebSocket ticks plus quotes/history/search),
 yfinance as the fallback for everything else and for any symbol Kite can't resolve.
@@ -127,11 +127,15 @@ orchestration, token budgeting, and market-hours handling.
 
 ## Local development
 
-Prerequisites: Docker Desktop, Git.
+Prerequisites: Node 20+, Python 3.12+, Git, and Docker only if you want the
+throwaway Redis (production has no container runtime).
 
 ```bash
 cp .env.example .env.local     # fill in keys — see docs/
-docker compose up --build
+docker compose -f docker-compose.dev.yml up -d          # just Redis
+npm --prefix ai-trader-api run start:dev                # :8000
+npm --prefix ai-trader-frontend run dev                 # :3000
+cd ai-trader-signals && uvicorn main:app --reload --port 8001
 ```
 
 | Service | URL |
@@ -139,11 +143,7 @@ docker compose up --build
 | Frontend | http://localhost:3000 |
 | API | http://localhost:8000 |
 | API docs | http://localhost:8000/docs |
-| Celery monitor | http://localhost:5555 |
-| Mail catcher | http://localhost:8025 |
-
-Accounts needed to run it end to end: a broker API (Dhan, Zerodha Kite Connect or Angel One SmartAPI), AWS
-(Bedrock, SES, S3, Secrets Manager), HuggingFace (FinBERT), NewsAPI, and Google OAuth.
+| Signals | http://localhost:8001/health |
 
 ---
 

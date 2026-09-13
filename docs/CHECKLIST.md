@@ -90,21 +90,21 @@ Order matters: each step creates the headroom the next one needs. Details: [arch
     - `newsd`: `MemoryMax=350M`, `MemorySwapMax=0`, `OOMScoreAdjust=500`;
     - a forced `newsd` OOM leaves the terminal serving.
 
-- [ ] **B5 · Remove Docker**
+- [x] **B5 · Remove Docker** — 2026-09-13
   - **Why:** −206 MB, and deploys stop being full outages.
   - **Done when:**
-    - [x] the frontend image is built in GitHub Actions (ARM) and pulled from GHCR — deploys dropped from minutes of outage to ~66 s;
-    - API, Caddy and Redis run as systemd units;
-    - Docker is uninstalled;
-    - free memory is ≈ 1 GB (from 601 MB).
+    - [x] the frontend is built in GitHub Actions (ARM) — now shipped as a bundle, not an image, since the box has nothing to run an image with;
+    - [x] API, Caddy and Redis run as systemd units (Caddy and Redis as distro packages);
+    - [x] Docker is uninstalled;
+    - [x] free memory is ≈ 1 GB — **1168 MB available**, from 601 MB.
 
-- [ ] **B6 · Watchdogs, and safe deploys**
+- [x] **B6 · Watchdogs, and safe deploys** — 2026-09-13
   - **Why:** nothing today notices when a scheduled job silently stops.
   - **Done when:**
-    - every job writes a heartbeat;
-    - Healthchecks.io alerts on a missed ping;
-    - UptimeRobot watches `/health`;
-    - `deploy.sh` lints and tests before restarting, and rolls back if `/health` fails.
+    - [x] every job writes a heartbeat;
+    - [x] Healthchecks.io alerts on a missed ping;
+    - [x] UptimeRobot watches `/health`;
+    - [x] rolls back if health fails — frontend by symlink, API and signals by checking the previous commit back out. **Deviation:** the lint and test gate lives in CI (the deploy job needs a green test job), not in `deploy.sh`; running the suites again on a 2 GB box would add minutes to every deploy and gate nothing CI has not already gated.
 
 ## CI/CD — GitHub Actions
 All four repos are public, so Actions minutes are free and unlimited.
@@ -178,6 +178,7 @@ Things only you can do, from an AWS or third-party account.
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
 
+- 2026-09-13 · B5 + B6 · **Docker is gone from the box.** API and frontend joined signals and newsd as systemd units; Caddy and Redis are distro packages; `dockerd`/`containerd` (451 MB resident at the time) were purged. The frontend is no longer an image — CI packs Next's standalone output (plus `static/` and `public/`, which it leaves outside that tree) into a release asset the box fetches with no credentials, since the deploy key is locked to a forced command and cannot receive files. Releases unpack to `frontend/releases/<sha>` behind a `current` symlink. `deploy.sh` rebuilds only what moved (venv on `requirements.txt`, Node subprojects on their lockfiles, API on its HEAD), health-gates the result, and rolls back on failure: symlink flip for the frontend, previous commit for API and signals. Caddy's existing Let's Encrypt cert was copied out of the docker volume, so nothing was re-issued. Live: memory used **1079 → 666 MB** (1168 MB available), disk **13 → 6.4 GB**, all six units active, site and `/api/health` 200, static assets 200, both schedulers' jobs re-registered in the new Redis with correct IST times. · `ai-trader@HEAD`, `ai-trader-frontend@6c67fe9`
 - 2026-09-13 · B4 · `signals` and `newsd` run under systemd, not Docker (`systemd/*.service`, installed by deploy.sh). The box got Python 3.12 (containers ran 3.13) and Node 20 for the Pine sandbox; before cutting over, a second instance on :8002 against a throwaway Redis db proved `/ready` green and a Pine script returning correct SMA values through the host's Node sandbox. Isolation verified by forcing it: a drop-in made newsd allocate 600 MB, systemd reported `Result=oom-kill` at the 350 MB cap, and the terminal answered 200 throughout. Caps live: signals `MemoryMin=300M`/`OOMScoreAdjust=-500`, newsd `MemoryMax=350M`/`MemorySwapMax=0`/`OOMScoreAdjust=+500`. Redis is published on 127.0.0.1 and the API reaches signals over the docker bridge until B5 removes the bridge entirely. · `ai-trader@HEAD`, `journalctl -u ai-trader-newsd`
 - 2026-09-13 · B3 · The news pipeline runs in `newsd`, its own process and its own failure domain, and Celery is gone — worker, beat, `celery_app.py`, `tasks.py` and the dependency. The news job moved to `app/worker/news_job.py` so the process imports nothing from the terminal's stack (a test fails if it does), and newsd's Redis job store uses its own keys, which is what stops the two schedulers from running each other's jobs. Live: newsd idles at **36 MB** where worker + beat cost 283 MB; a run triggered inside the container analysed 25 articles (not degraded), got `201` from `/api/internal/news`, and pinged its Healthchecks check; next scheduled run 19:00 IST. · `ai-trader-signals@db891a2`
 - 2026-09-13 · B2 · The six cron jobs now run from APScheduler inside the `signals` process, on a Redis job store, in IST — Celery beat is down to `news-analysis` alone. Job bodies moved to `app/worker/jobs.py` as plain functions (the Redis store resolves jobs by import path); the Celery tasks are thin wrappers over the same functions, so both paths ping the same Healthchecks check. A scheduler that fails to start no longer takes the charts down with it. Live proof: deleted `apscheduler.jobs` in Redis, restarted only the signals container, and all 6 jobs reappeared with the right IST next-run times (square-off Mon 15:20). Also fixed: nothing configured logging in that process, so every app-level line was being dropped — including the scheduler's, and any job failure it reports. · `ai-trader-signals@220a110`, `ai-trader-signals@cde3f8e`

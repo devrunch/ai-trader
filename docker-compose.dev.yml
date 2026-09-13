@@ -1,0 +1,14 @@
+# Local development only. Production runs systemd units on the box and has no
+# container runtime at all (see DEPLOY.md) — the one thing a laptop still
+# wants a container for is Redis.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Then run the services from source: `npm run dev` (frontend, api) and
+# `uvicorn main:app --reload --port 8001` (signals).
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped

@@ -5,7 +5,8 @@
 # is launched and changes if it is ever replaced. Nothing here can be a fixed
 # domain.
 #
-# /api/* -> the NestJS API. Everything else -> the Next.js frontend. Serving
+# /api/* -> the NestJS API. Everything else -> the Next.js frontend. Both
+# are systemd units on the loopback now, not containers on a shared network. Serving
 # both under one hostname makes the browser's requests same-origin, so the
 # API's CORS config never has to fire and the auth cookie needs no cross-site
 # cookie attributes.
@@ -14,15 +15,15 @@
 
 	@api path /api/*
 	handle @api {
-		reverse_proxy api:8000
+		reverse_proxy 127.0.0.1:8000
 	}
 
 	@socketio path /socket.io/*
 	handle @socketio {
-		reverse_proxy api:8000
+		reverse_proxy 127.0.0.1:8000
 	}
 
 	handle {
-		reverse_proxy frontend:3000
+		reverse_proxy 127.0.0.1:3000
 	}
 }
