@@ -1,0 +1,32 @@
+# The terminal: FastAPI, live ticks, the chat agent, and the six cheap cron
+# jobs (app/worker/scheduler.py). Everything a user sees on screen depends on
+# this process, so it is the one the kernel should kill last.
+[Unit]
+Description=AI Trader signals service
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-trader/ai-trader-signals
+EnvironmentFile=/home/ubuntu/ai-trader/ai-trader-signals/.env
+# Redis and the API are still containers, reached over their published
+# 127.0.0.1 ports rather than the compose network this process has left.
+Environment=PYTHONUNBUFFERED=1
+Environment=NUMBA_DISABLE_JIT=1
+Environment=API_SERVICE_URL=http://127.0.0.1:8000
+Environment=REDIS_URL=redis://127.0.0.1:6379/0
+# 0.0.0.0, not 127.0.0.1: the API container has to reach this over the docker
+# bridge. The security group only admits 22, 80 and 443, so this port is not
+# reachable from outside the box.
+ExecStart=/home/ubuntu/ai-trader/venv-signals/bin/uvicorn main:app --host 0.0.0.0 --port 8001 --workers 1
+Restart=always
+RestartSec=5
+# Protected memory, and a strong bias against being the OOM victim: if the
+# news engine and this process are ever both over, news is the one to lose.
+MemoryMin=300M
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target

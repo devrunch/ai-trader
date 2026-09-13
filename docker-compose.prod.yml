@@ -39,7 +39,7 @@ services:
     environment:
       FRONTEND_URL: https://${PUBLIC_HOSTNAME}
 
-# The base file already binds signals/api/frontend to 127.0.0.1 only — that is
+# The base file already binds api/frontend/redis to 127.0.0.1 only — that is
 # already correct for prod (unreachable from outside the host) and Caddy still
 # reaches them by service name over the compose network regardless, so nothing
 # about those port bindings needs to change here.

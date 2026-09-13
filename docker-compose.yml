@@ -3,6 +3,9 @@ services:
   # ── Redis: live-tick pub/sub between signals and api ────────────────
   redis:
     image: redis:7-alpine
+    # Published because signals and newsd live outside this network now.
+    ports:
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -11,53 +14,10 @@ services:
       start_period: 5s
     restart: unless-stopped
 
-  # ── Python FastAPI signals service ──────────────────────────────────
-  signals:
-    build:
-      context: ./ai-trader-signals
-      dockerfile: ../docker/signals/Dockerfile
-      target: api
-    ports:
-      - "127.0.0.1:8001:8001"
-    env_file: ./ai-trader-signals/.env
-    environment:
-      # Chat agent calls back into NestJS for the user's trading context
-      API_SERVICE_URL: http://api:8000
-    healthcheck:
-      # /ready, not /health. This healthcheck's only job in compose is the
-      # `depends_on: service_healthy` gate below, and the point of a gate is
-      # that dependents do not start against a signals service that cannot
-      # reach market data. /health is static liveness (it answers even
-      # when every dependency is down) and stays that way — Fargate's task
-      # healthCheck uses it to decide whether to *kill* the container, and a
-      # dependency outage must not do that.
-      # /ready returns 503 when a probe fails; urlopen raises on 503.
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/ready')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
-
-
-  # ── News engine (hourly news + sentiment + per-headline impact) ─────
-  newsd:
-    build:
-      context: ./ai-trader-signals
-      dockerfile: ../docker/signals/Dockerfile
-      target: newsd
-    env_file: ./ai-trader-signals/.env
-    environment:
-      API_SERVICE_URL: http://api:8000
-    depends_on:
-      redis:
-        condition: service_healthy
-      api:
-        condition: service_healthy
-    restart: unless-stopped
+  # `signals` and `newsd` are not here: they run under systemd (see
+  # systemd/*.service), where the news engine can be memory-capped without
+  # the terminal being capped with it. Both reach Redis and the API through
+  # the published 127.0.0.1 ports below.
 
   # ── NestJS API ───────────────────────────────────────────────────────
   api:
@@ -67,13 +27,14 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     env_file: ./ai-trader-api/.env
+    # host-gateway: signals runs on the host now, not in this network.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      SIGNALS_SERVICE_URL: http://signals:8001
+      SIGNALS_SERVICE_URL: http://host.docker.internal:8001
       FRONTEND_URL: http://localhost:3000
     depends_on:
       redis:
-        condition: service_healthy
-      signals:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]

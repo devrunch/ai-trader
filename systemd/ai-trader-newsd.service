@@ -1,0 +1,30 @@
+# The news engine (app/worker/newsd.py). Capped and expendable by design: an
+# LLM pass over the hourly batch is the only thing here that can grow without
+# warning, and it must not be able to take the terminal down with it.
+[Unit]
+Description=AI Trader news engine
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-trader/ai-trader-signals
+EnvironmentFile=/home/ubuntu/ai-trader/ai-trader-signals/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=NUMBA_DISABLE_JIT=1
+Environment=API_SERVICE_URL=http://127.0.0.1:8000
+Environment=REDIS_URL=redis://127.0.0.1:6379/0
+ExecStart=/home/ubuntu/ai-trader/venv-signals/bin/python -m app.worker.newsd
+Restart=always
+# A crash loop here would hammer the LLM and the news vendors; an hourly job
+# can afford to wait half a minute.
+RestartSec=30
+# Hard cap, no swap: the process dies rather than pushing the terminal into
+# swap, and systemd restarts it for the next hour's run.
+MemoryMax=350M
+MemorySwapMax=0
+OOMScoreAdjust=500
+
+[Install]
+WantedBy=multi-user.target

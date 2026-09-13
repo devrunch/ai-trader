@@ -41,20 +41,77 @@ for repo in ai-trader-frontend ai-trader-api ai-trader-signals; do
   git -C "$repo" pull --ff-only
 done
 
+# ── Python services (systemd, no container) ─────────────────────────────
+# Rebuilt only when their inputs change: a pip or npm run on this box costs
+# minutes and memory, and the usual deploy changes neither.
+STATE=.deploy-state
+mkdir -p "$STATE"
+
+sync_if_changed() {   # <file> <state-name> <command...>
+  local file=$1 name=$2; shift 2
+  local now
+  now=$(sha256sum "$file" | cut -d' ' -f1)
+  if [ "$now" != "$(cat "$STATE/$name" 2>/dev/null || true)" ]; then
+    echo "$file changed — running: $*"
+    "$@"
+    echo "$now" > "$STATE/$name"
+  fi
+}
+
+VENV=$PWD/venv-signals
+sync_if_changed ai-trader-signals/requirements.txt requirements.sha \
+  "$VENV/bin/pip" install -q -r ai-trader-signals/requirements.txt
+
+# The Pine sandbox and the Dukascopy bridge are Node subprojects this
+# service spawns as subprocesses; the image used to carry their modules.
+for sub in pine_sandbox dukascopy_bridge; do
+  sync_if_changed "ai-trader-signals/app/$sub/package-lock.json" "$sub.sha" \
+    npm --prefix "ai-trader-signals/app/$sub" ci --omit=dev
+done
+
+for unit in systemd/*.service; do
+  name=$(basename "$unit")
+  if ! sudo cmp -s "$unit" "/etc/systemd/system/$name"; then
+    echo "Installing $name"
+    sudo install -m 644 "$unit" "/etc/systemd/system/$name"
+    RELOAD=1
+  fi
+done
+[ "${RELOAD:-0}" = 1 ] && sudo systemctl daemon-reload
+
+# ── Containers (API, frontend, Caddy, Redis) ────────────────────────────
 # Stop before starting the new generation: this box has 2 GB of RAM and
 # cannot hold two sets of containers at once. The frontend build that made
 # this genuinely dangerous now happens in CI, so this is a short restart
 # rather than a build outage.
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
-# --remove-orphans: the Celery worker and beat containers are gone from the
-# compose file, and would otherwise keep running against the new code.
+# --remove-orphans: signals and newsd left the compose file for systemd, and
+# their old containers would otherwise keep running against the new code.
 $COMPOSE down --remove-orphans
-# The frontend image is built in CI and pulled; only the Python and NestJS
-# images are still built here, and neither needs anything like the RAM
-# `next build` did.
+# The frontend image is built in CI and pulled; only the NestJS image is
+# still built here, and it needs nothing like the RAM `next build` did.
 $COMPOSE pull frontend
-$COMPOSE build api signals newsd
+$COMPOSE build api
 $COMPOSE up -d
+
+# enable: these have to come back on their own after a reboot.
+sudo systemctl enable -q ai-trader-signals ai-trader-newsd
+sudo systemctl restart ai-trader-signals ai-trader-newsd
+
+# ── Did it actually come back? ──────────────────────────────────────────
+for attempt in $(seq 1 20); do
+  signals_up=$(curl -fsS -m 5 http://127.0.0.1:8001/health >/dev/null 2>&1 && echo 1 || echo 0)
+  api_up=$(curl -fsS -m 5 http://127.0.0.1:8000/api/health >/dev/null 2>&1 && echo 1 || echo 0)
+  [ "$signals_up$api_up" = "11" ] && break
+  sleep 3
+done
+if [ "$signals_up$api_up" != "11" ]; then
+  echo "Deploy finished but health checks failed (signals=$signals_up api=$api_up)" >&2
+  sudo systemctl --no-pager --lines=20 status ai-trader-signals || true
+  exit 1
+fi
+systemctl is-active ai-trader-signals ai-trader-newsd | tr '
+' ' '; echo
 
 echo ""
 echo "Deployed. https://$PUBLIC_HOSTNAME"
