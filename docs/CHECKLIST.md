@@ -1,0 +1,166 @@
+# AI Trader — work checklist
+
+The single list of what we're doing, in order. Claude keeps it current: when an item ships, it's ticked with the date and the commit or evidence that proves it works. Nothing is ticked on "should work".
+
+**Status:** `[ ]` to do · `[~]` in progress · `[x]` done · `[-]` dropped (with the reason)
+**Background:** [How it works](how-it-works/README.md) · [Free-tier architecture plan](architecture/README.md) · [Project overview](project-overview.md)
+
+Each item says **why** (one line) and **done when** (how we'll know it actually works).
+
+---
+
+## Phase 0 — Fixes found during review
+Small, low risk, worth doing first.
+
+- [x] **F1 · Fix Bedrock API key minting** — 2026-09-13, `ai-trader-signals@c6ffdf8`
+  - **Why:** `generate_bedrock_key` in `ai-trader-signals/app/config.py` signs with `Version=1` included, so AWS rejects the key. Production survives only because an explicit `BEDROCK_API_KEY` is set; if that key goes away, every AI feature fails.
+  - **Done when:** a unit test covers the signing order, and a key minted from IAM credentials lists Mantle models (HTTP 200).
+
+- [ ] **F2 · Box hygiene** (no code)
+  - **Why:** 6.75 GB of Docker build cache fills a 78%-full disk; unused OS services cost ~100 MB.
+  - **Done when:**
+    - build cache is pruned;
+    - `fwupd`, `ModemManager`, `udisks2` and `snapd` are disabled;
+    - ~~an Elastic IP is attached~~ already in place (`3.7.76.174`);
+    - a CloudWatch alarm exists on `CPUCreditBalance`.
+
+- [ ] **F3 · Delete SQS**
+  - **Why:** the API polls an empty queue ~4,300 times a day, and an AWS blip on the readiness probe can break startup.
+  - **Done when:**
+    - the signal publisher POSTs to the API's internal endpoint;
+    - the NestJS poller and the `/ready` SQS probe are gone;
+    - `kombu[sqs]` is removed (**keep `boto3`**, which F1 needs);
+    - all three test suites pass.
+
+---
+
+## Phase 1 — AI and news quality
+
+- [ ] **A1 · Replace FinBERT with an LLM sentiment field**
+  - **Why:** FinBERT misreads direction on exactly the headlines that matter ("hotter CPI" → positive). The LLM already reads every article, so the field costs ~$0.50/month. Evidence: [FinBERT test](how-it-works/README.md#5-finbert-do-we-need-it).
+  - **Done when:**
+    - the impact prompt returns `sentiment` per article;
+    - if the call fails, sentiment shows as "unscored", same as today;
+    - the HuggingFace code and `HF_API_TOKEN` are removed;
+    - the Home badge still renders.
+  - `app/signals/sentiment.py` (hidden signals) moves when A4 happens.
+
+- [ ] **A2 · Fallback model for news impact**
+  - **Why:** a failed batch discards 8 articles. Retrying on a different model beats re-asking the same one.
+  - **Done when:** on a failed chunk, the retry uses `qwen.qwen3-235b-a22b-2507`. A test covers a DeepSeek failure recovering via the fallback.
+  - Evidence: [bake-off](how-it-works/README.md#7-which-model-is-best-the-bake-off-sep-2026).
+
+- [ ] **A3 · Chat model A/B, behind a flag**
+  - **Why:** first-round tool selection is a tie, so the real difference would be answer quality over several rounds, which we can't measure offline.
+  - **Done when:**
+    - an env flag routes a percentage of chat turns to `moonshotai.kimi-k2.5` or `zai.glm-5`;
+    - the model name is recorded on each stored chat turn;
+    - there's a way to compare them.
+  - Keep DeepSeek V3.2 as the default until the data says otherwise.
+
+- [ ] **A4 · Signals revival** — later
+  - **Why:** hidden because there's no proven track record.
+  - **Done when:** walk-forward results with costs and drawdown are published, and signals are shown only alongside that record.
+
+---
+
+## Phase 2 — Free-tier architecture
+Order matters: each step creates the headroom the next one needs. Details: [architecture plan §8](architecture/README.md#8-migration-order).
+
+- [ ] **B1 · Take yfinance out of the news path**
+  - **Why:** it drags pandas into news for one HTTP call (+65 MB, measured).
+  - **Done when:** `macro_events.py` uses a direct HTTP call, and a test fails if the news entrypoint imports pandas.
+
+- [ ] **B2 · APScheduler inside `signals` for the cheap jobs**
+  - **Why:** removes Celery beat, and allows second-precision event wake-ups.
+  - **Done when:**
+    - jobs run from APScheduler with the **Redis job store** (so a restart during 15:20 doesn't skip square-off);
+    - it runs alongside beat for a day with matching logs;
+    - beat is deleted.
+
+- [ ] **B3 · `newsd` process; delete the Celery worker**
+  - **Why:** −283 MB for worker + beat; news gets its own failure domain.
+  - **Done when:** the hourly news result keeps arriving from `newsd`, and the Celery worker is gone.
+
+- [ ] **B4 · `signals` and `newsd` as systemd units, with isolation**
+  - **Why:** the news engine must be able to die without taking the terminal down.
+  - **Done when:**
+    - `signals`: `MemoryMin=300M`, `OOMScoreAdjust=-500`;
+    - `newsd`: `MemoryMax=350M`, `MemorySwapMax=0`, `OOMScoreAdjust=500`;
+    - a forced `newsd` OOM leaves the terminal serving.
+
+- [ ] **B5 · Remove Docker**
+  - **Why:** −206 MB, and deploys stop being full outages.
+  - **Done when:**
+    - the frontend builds in GitHub Actions and is rsynced to the box;
+    - API, Caddy and Redis run as systemd units;
+    - Docker is uninstalled;
+    - free memory is ≈ 1 GB (from 601 MB).
+
+- [ ] **B6 · Watchdogs, and safe deploys**
+  - **Why:** nothing today notices when a scheduled job silently stops.
+  - **Done when:**
+    - every job writes a heartbeat;
+    - Healthchecks.io alerts on a missed ping;
+    - UptimeRobot watches `/health`;
+    - `deploy.sh` lints and tests before restarting, and rolls back if `/health` fails.
+
+---
+
+## Phase 3 — Self-built news engine
+
+- [ ] **N1 · RSS firehose in `newsd`**
+  - **Done when:**
+    - ~50 feeds are polled with conditional GET (mostly `304` replies), tiered 1–15 minutes;
+    - stories are deduped and clustered before the LLM;
+    - news lag drops from ~1 h to minutes.
+
+- [ ] **N2 · Release calendar from primary sources**
+  - **Done when:** a daily job lists upcoming BLS, BEA, EIA, Fed, RBI, SEC and NSE/BSE events, each traceable to a real dated source.
+
+- [ ] **N3 · Event watcher**
+  - **Done when:**
+    - `DateTrigger` fires 30 s before each release and polls the source every 2 s;
+    - the published number is compared with expectations (or the previous figure);
+    - an explained alert goes out;
+    - it's tested against a real past release, such as a PPI day.
+
+- [ ] **N4 · Telegram delivery**
+  - **Done when:** alerts reach a phone with the app closed, with no duplicate sends after a restart.
+
+- [ ] **N5 · TTL index on news documents**
+  - **Done when:** per-article news expires after 30 days, keeping Atlas far below its 512 MB free cap (~2 MB today).
+
+---
+
+## Later — product
+- [ ] Multi-currency paper account (US stocks and forex, not just NSE/BSE in rupees)
+- [ ] Crypto charts
+- [ ] Live US prices
+- [ ] Risk-profile questionnaire, the foundation for personal advice
+
+---
+
+## Needs you
+Things only you can do, from an AWS or third-party account.
+
+- [x] **Elastic IP** — `3.7.76.174` is an Elastic IP already attached to the server. (F2)
+- [ ] **Anthropic use-case form** in the Bedrock console — unlocks Claude Haiku 4.5. Optional.
+- [ ] **AWS Sales / account maturity** for Claude Sonnet 5, Opus 5 and GPT-5.6 — optional, not self-serve.
+- [ ] **Service Quotas:** raise Amazon Nova's daily token quota — optional.
+- [x] **Healthchecks.io and UptimeRobot** accounts, with API keys stored in the server `.env`. (B6)
+- [~] **Telegram bot** `@adizx_bot`: token is stored in the server `.env`. Waiting for you to press **Start** in t.me/adizx_bot so the chat ID can be read. (N4)
+- [ ] **Telegram in Healthchecks.io and UptimeRobot** — connect it in each dashboard's Integrations page. Both currently alert by email only.
+- [ ] **GitHub Actions secrets** for deploying the frontend build. (B5)
+
+---
+
+## Log
+Newest first. One line per shipped item: date · ID · what shipped · evidence.
+
+- 2026-09-13 · F1 · Bedrock key signed without `Version=1` · test checks the signature against hand-computed SigV4; a key minted by the app listed 38 Mantle models (HTTP 200); `LlmClient` with no explicit key got a DeepSeek reply; full suite 583 passed · `ai-trader-signals@c6ffdf8`
+
+- 2026-09-13 · B6 (partial) · All 6 scheduled jobs now ping their Healthchecks.io check (fail ping on error, on ok=False, on a failed publish, or on an exception); deployed. Live proof: `run_drift_check` run inside the production worker → check `drift-check` went `up`, 1 ping. · `ai-trader-signals@148bcdb`
+- 2026-09-13 · B6 (partial) · Healthchecks.io: 7 checks created, one per scheduled job, with real cron schedules (Asia/Kolkata) and grace periods, all in state "new" (no alerts until the first ping). UptimeRobot: "AI Trader API health" monitor (id 803980958) added via the v3 API, alongside your homepage monitor. Not ticked: jobs don't ping yet. · API responses 200/201
+
+- 2026-09-13 · — · Bake-off of 8 Mantle models; FinBERT vs LLM test; how-it-works and architecture docs written · `docs/how-it-works/`, `docs/architecture/`

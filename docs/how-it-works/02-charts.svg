@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 790" width="960" height="790" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="960" height="790" fill="#ffffff"/>
+  <defs>
+    <marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">How a chart gets its candles</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">Two separate paths: history is fetched once when you open a symbol; live prices are pushed afterwards to keep the last candle moving.</text>
+
+  <!-- column headers -->
+  <g font-size="12" font-weight="700" fill="#334155">
+    <text x="46" y="98">Browser</text><text x="286" y="98">API (NestJS)</text><text x="526" y="98">signals (Python)</text><text x="766" y="98">Data vendor</text>
+  </g>
+  <line x1="28" y1="106" x2="932" y2="106" stroke="#e2e8f0"/>
+
+  <!-- PATH 1 history -->
+  <rect x="28" y="116" width="904" height="200" rx="10" fill="#f0f9ff" stroke="#0284c7"/>
+  <text x="46" y="140" font-size="13" font-weight="700" fill="#0c4a6e">1 · History — once per symbol, interval or period change</text>
+  <rect x="46" y="154" width="200" height="72" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="58" y="174" font-size="11" font-weight="600" fill="#0c4a6e">Terminal asks for bars</text>
+  <text x="58" y="191" font-size="10" fill="#0369a1">GET /api/market/historical</text>
+  <text x="58" y="206" font-size="10" fill="#0369a1">symbol, exchange, interval, days</text>
+  <rect x="286" y="154" width="200" height="72" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="298" y="174" font-size="11" font-weight="600" fill="#0c4a6e">Checks login, forwards</text>
+  <text x="298" y="191" font-size="10" fill="#0369a1">no caching or maths here</text>
+  <rect x="526" y="154" width="200" height="72" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="538" y="174" font-size="11" font-weight="600" fill="#0c4a6e">Picks the vendor by exchange</text>
+  <text x="538" y="191" font-size="10" fill="#0369a1">cache: intraday 5 min, daily 1 h</text>
+  <text x="538" y="206" font-size="10" fill="#0369a1">a failure is cached only 15 s</text>
+  <rect x="766" y="154" width="148" height="72" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+  <text x="778" y="174" font-size="11" font-weight="600" fill="#0c4a6e">Returns OHLCV bars</text>
+  <text x="778" y="191" font-size="10" fill="#0369a1">see routing table</text>
+  <line x1="246" y1="190" x2="280" y2="190" stroke="#64748b" marker-end="url(#c)"/>
+  <line x1="486" y1="190" x2="520" y2="190" stroke="#64748b" marker-end="url(#c)"/>
+  <line x1="726" y1="190" x2="760" y2="190" stroke="#64748b" marker-end="url(#c)"/>
+  <rect x="46" y="238" width="868" height="62" rx="6" fill="#ffffff" stroke="#bae6fd"/>
+  <text x="58" y="258" font-size="11" font-weight="600" fill="#0c4a6e">Back in the browser: Lightweight Charts draws the bars</text>
+  <text x="58" y="276" font-size="10" fill="#0369a1">Chart type (candles, Heikin Ashi, Renko, Point &amp; Figure, footprint…) is applied in the browser from the same bars — no refetch.</text>
+  <text x="58" y="291" font-size="10" fill="#0369a1">Scrolling left loads older bars with another history call. Your drawings and indicator set are saved per symbol through the API.</text>
+
+  <!-- PATH 2 live -->
+  <rect x="28" y="330" width="904" height="250" rx="10" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="46" y="354" font-size="13" font-weight="700" fill="#713f12">2 · Live — pushed continuously while the symbol is open</text>
+  <rect x="46" y="368" width="200" height="70" rx="6" fill="#ffffff" stroke="#fde047"/>
+  <text x="58" y="388" font-size="11" font-weight="600" fill="#713f12">Socket: subscribe_symbol</text>
+  <text x="58" y="405" font-size="10" fill="#a16207">also fetches one quote at once,</text>
+  <text x="58" y="419" font-size="10" fill="#a16207">so a closed market still shows a price</text>
+  <rect x="286" y="368" width="200" height="70" rx="6" fill="#ffffff" stroke="#fde047"/>
+  <text x="298" y="388" font-size="11" font-weight="600" fill="#713f12">Counts watchers</text>
+  <text x="298" y="405" font-size="10" fill="#a16207">first viewer of a symbol → asks</text>
+  <text x="298" y="419" font-size="10" fill="#a16207">signals to start; last leaves → stop</text>
+  <rect x="526" y="368" width="200" height="70" rx="6" fill="#ffffff" stroke="#fde047"/>
+  <text x="538" y="388" font-size="11" font-weight="600" fill="#713f12">Opens the right live feed</text>
+  <text x="538" y="405" font-size="10" fill="#a16207">websocket, or a 5 s poll for</text>
+  <text x="538" y="419" font-size="10" fill="#a16207">exchanges without one</text>
+  <rect x="766" y="368" width="148" height="70" rx="6" fill="#ffffff" stroke="#fde047"/>
+  <text x="778" y="388" font-size="11" font-weight="600" fill="#713f12">Streams prices</text>
+  <text x="778" y="405" font-size="10" fill="#a16207">Kite · Deriv · yfinance</text>
+  <line x1="246" y1="403" x2="280" y2="403" stroke="#64748b" marker-end="url(#c)"/>
+  <line x1="486" y1="403" x2="520" y2="403" stroke="#64748b" marker-end="url(#c)"/>
+  <line x1="726" y1="403" x2="760" y2="403" stroke="#64748b" marker-end="url(#c)"/>
+
+  <rect x="526" y="458" width="200" height="54" rx="6" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="538" y="478" font-size="11" font-weight="600" fill="#7c2d12">Publishes each tick</text>
+  <text x="538" y="495" font-size="10" fill="#c2410c">Redis channel market:ticks</text>
+  <rect x="286" y="458" width="200" height="54" rx="6" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="298" y="478" font-size="11" font-weight="600" fill="#7c2d12">Relays to the symbol's room</text>
+  <text x="298" y="495" font-size="10" fill="#c2410c">only browsers watching it</text>
+  <rect x="46" y="458" width="200" height="54" rx="6" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="58" y="478" font-size="11" font-weight="600" fill="#7c2d12">Moves the last candle</text>
+  <text x="58" y="495" font-size="10" fill="#c2410c">price header + chart update</text>
+  <line x1="820" y1="438" x2="820" y2="485" stroke="#64748b"/>
+  <line x1="820" y1="485" x2="732" y2="485" stroke="#64748b" marker-end="url(#c)"/>
+  <line x1="526" y1="485" x2="492" y2="485" stroke="#64748b" marker-end="url(#c)"/>
+  <line x1="286" y1="485" x2="252" y2="485" stroke="#64748b" marker-end="url(#c)"/>
+  <text x="46" y="540" font-size="11" fill="#a16207">FOREX extra: the forming candle's volume is polled from Dukascopy (15–20 min behind). Footprint and TPO charts fetch raw ticks for a window.</text>
+  <text x="46" y="560" font-size="11" fill="#a16207">Stale ticks for a symbol you already left are dropped in the browser, so switching symbols never paints the wrong price.</text>
+
+  <!-- routing table -->
+  <text x="28" y="612" font-size="13" font-weight="700" fill="#0f172a">Vendor routing by exchange</text>
+  <g font-size="11">
+    <rect x="28" y="622" width="904" height="26" fill="#f1f5f9"/>
+    <text x="40" y="639" font-weight="700" fill="#334155">Exchange</text><text x="200" y="639" font-weight="700" fill="#334155">History and quotes</text><text x="460" y="639" font-weight="700" fill="#334155">Live prices</text><text x="720" y="639" font-weight="700" fill="#334155">Freshness</text>
+    <text x="40" y="668" fill="#0f172a">NSE · BSE · MCX</text><text x="200" y="668" fill="#475569">Zerodha Kite</text><text x="460" y="668" fill="#475569">Kite websocket</text><text x="720" y="668" fill="#15803d">live (needs the daily login)</text>
+    <line x1="28" y1="678" x2="932" y2="678" stroke="#e2e8f0"/>
+    <text x="40" y="698" fill="#0f172a">FOREX · metals</text><text x="200" y="698" fill="#475569">Deriv</text><text x="460" y="698" fill="#475569">Deriv websocket, 1 update/s</text><text x="720" y="698" fill="#15803d">live · volume 15–20 min late</text>
+    <line x1="28" y1="708" x2="932" y2="708" stroke="#e2e8f0"/>
+    <text x="40" y="728" fill="#0f172a">NASDAQ · NYSE</text><text x="200" y="728" fill="#475569">yfinance</text><text x="460" y="728" fill="#475569">poll every 5 s</text><text x="720" y="728" fill="#b45309">about 15 min delayed</text>
+  </g>
+  <text x="28" y="766" font-size="11" fill="#475569">If Kite or Deriv returns nothing (an expired Kite login, say), signals falls back to yfinance: the chart still loads, but delayed.</text>
+</svg>

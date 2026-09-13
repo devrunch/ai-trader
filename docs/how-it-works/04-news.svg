@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" width="960" height="720" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="960" height="720" fill="#ffffff"/>
+  <defs>
+    <marker id="n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">How the news on Home is made — today</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">Runs every hour at :00. The page never calls a news vendor or an AI model; it reads the last stored result.</text>
+
+  <!-- trigger -->
+  <rect x="28" y="84" width="200" height="54" rx="8" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="44" y="106" font-size="12" font-weight="600" fill="#334155">Scheduler, hourly at :00</text>
+  <text x="44" y="124" font-size="11" fill="#475569">run_news_analysis</text>
+  <line x1="228" y1="111" x2="262" y2="111" stroke="#64748b" marker-end="url(#n)"/>
+
+  <!-- sources -->
+  <rect x="268" y="84" width="664" height="116" rx="10" fill="#f0f9ff" stroke="#0284c7"/>
+  <text x="284" y="106" font-size="13" font-weight="700" fill="#0c4a6e">1 · Fetch four sources at the same time</text>
+  <g font-size="11">
+    <rect x="284" y="118" width="150" height="66" rx="6" fill="#ffffff" stroke="#7dd3fc"/><text x="296" y="137" font-weight="600" fill="#0c4a6e">yfinance</text><text x="296" y="154" fill="#0369a1">freshest, ~1 h</text><text x="296" y="170" fill="#0369a1">market headlines</text>
+    <rect x="444" y="118" width="150" height="66" rx="6" fill="#ffffff" stroke="#7dd3fc"/><text x="456" y="137" font-weight="600" fill="#0c4a6e">Alpha Vantage</text><text x="456" y="154" fill="#0369a1">~1 h, cached 2 h</text><text x="456" y="170" fill="#0369a1">ticker-tagged</text>
+    <rect x="604" y="118" width="150" height="66" rx="6" fill="#ffffff" stroke="#7dd3fc"/><text x="616" y="137" font-weight="600" fill="#0c4a6e">newsdata.io</text><text x="616" y="154" fill="#0369a1">12 h delayed (free)</text><text x="616" y="170" fill="#0369a1">has Reuters, Bloomberg</text>
+    <rect x="764" y="118" width="150" height="66" rx="6" fill="#ffffff" stroke="#7dd3fc"/><text x="776" y="137" font-weight="600" fill="#0c4a6e">NewsAPI</text><text x="776" y="154" fill="#0369a1">24 h delayed (free)</text><text x="776" y="170" fill="#0369a1">widest domain list</text>
+  </g>
+  <line x1="600" y1="200" x2="600" y2="226" stroke="#64748b" marker-end="url(#n)"/>
+
+  <rect x="268" y="230" width="664" height="54" rx="8" fill="#ffffff" stroke="#0284c7"/>
+  <text x="284" y="252" font-size="12" font-weight="600" fill="#0c4a6e">2 · Merge newest-first, drop duplicates and junk domains</text>
+  <text x="284" y="270" font-size="11" fill="#0369a1">One list of ~25 articles. Each becomes "headline. description" text for the next step.</text>
+
+  <line x1="440" y1="284" x2="330" y2="320" stroke="#64748b" marker-end="url(#n)"/>
+  <line x1="760" y1="284" x2="760" y2="320" stroke="#64748b" marker-end="url(#n)"/>
+  <text x="530" y="312" font-size="11" font-weight="600" fill="#475569">3 · both run in parallel, on the same text</text>
+
+  <!-- finbert -->
+  <rect x="28" y="324" width="440" height="176" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+  <text x="46" y="348" font-size="13" font-weight="700" fill="#7f1d1d">FinBERT — sentiment badge</text>
+  <text x="46" y="368" font-size="11" fill="#b91c1c">ProsusAI/finbert on the HuggingFace free inference API.</text>
+  <text x="46" y="386" font-size="11" fill="#b91c1c">A small 2019 model that reads the tone of a sentence.</text>
+  <text x="46" y="410" font-size="11" font-weight="600" fill="#7f1d1d">Gives: one label per article</text>
+  <text x="46" y="428" font-size="11" fill="#b91c1c">POSITIVE / NEGATIVE / NEUTRAL + a confidence score</text>
+  <text x="46" y="452" font-size="11" font-weight="600" fill="#7f1d1d">Can't tell you: which asset, or which direction</text>
+  <text x="46" y="470" font-size="11" fill="#b91c1c">"hotter CPI" reads as positive-sounding words, not as</text>
+  <text x="46" y="486" font-size="11" fill="#b91c1c">bad news for stocks · fast (~1 s) · free but rate-limited</text>
+
+  <!-- llm -->
+  <rect x="492" y="324" width="440" height="176" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="510" y="348" font-size="13" font-weight="700" fill="#4c1d95">LLM impact analysis — the useful part</text>
+  <text x="510" y="368" font-size="11" fill="#6d28d9">DeepSeek V3.2 on Bedrock Mantle, 8 articles per call.</text>
+  <text x="510" y="386" font-size="11" fill="#6d28d9">Each article cached 48 h, so it's analysed once.</text>
+  <text x="510" y="410" font-size="11" font-weight="600" fill="#4c1d95">Gives: per-symbol impact</text>
+  <text x="510" y="428" font-size="11" fill="#6d28d9">symbol · up or down · a reason taken from the text</text>
+  <text x="510" y="446" font-size="11" fill="#6d28d9">· asset class (NSE, NASDAQ, FOREX, CRYPTO…)</text>
+  <text x="510" y="470" font-size="11" fill="#6d28d9">Empty list = analysed, nothing affected.</text>
+  <text x="510" y="486" font-size="11" fill="#6d28d9">null = couldn't analyse (shown as "unscored").</text>
+
+  <line x1="248" y1="500" x2="420" y2="540" stroke="#64748b" marker-end="url(#n)"/>
+  <line x1="712" y1="500" x2="540" y2="540" stroke="#64748b" marker-end="url(#n)"/>
+
+  <rect x="268" y="544" width="424" height="62" rx="8" fill="#ffffff" stroke="#64748b"/>
+  <text x="284" y="566" font-size="12" font-weight="600" fill="#334155">4 · POST to the API → stored in MongoDB</text>
+  <text x="284" y="584" font-size="11" fill="#475569">one "latest news result", plus degraded flags</text>
+  <text x="284" y="598" font-size="11" fill="#475569">if a source or a model failed</text>
+  <line x1="480" y1="606" x2="480" y2="632" stroke="#64748b" marker-end="url(#n)"/>
+
+  <rect x="168" y="636" width="624" height="66" rx="8" fill="#ecfdf5" stroke="#059669"/>
+  <text x="184" y="658" font-size="12" font-weight="600" fill="#064e3b">5 · Home page reads it instantly</text>
+  <text x="184" y="676" font-size="11" fill="#047857">each card: FinBERT badge · impacted symbols with ↑/↓ and the reason · filter by market</text>
+  <text x="184" y="692" font-size="11" fill="#047857">FinBERT is also used by signal generation, which is hidden right now</text>
+</svg>

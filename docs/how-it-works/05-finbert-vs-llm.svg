@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 700" width="960" height="700" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="960" height="700" fill="#ffffff"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">Do we need FinBERT? Tested on the box, Sep 2026</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">Same text given to both: FinBERT (HuggingFace) and the production LLM (DeepSeek V3.2). Judged on: will the named asset's price go up or down?</text>
+
+  <!-- test 1 -->
+  <text x="28" y="100" font-size="13" font-weight="700" fill="#0f172a">Test 1 — 20 hand-labelled headlines where the direction is clear</text>
+  <text x="28" y="120" font-size="12" fill="#334155">FinBERT</text>
+  <rect x="120" y="108" width="720" height="18" fill="#f1f5f9"/>
+  <rect x="120" y="108" width="648" height="18" fill="#f59e0b"/>
+  <text x="780" y="122" font-size="12" font-weight="700" fill="#b45309">18 / 20</text>
+  <text x="28" y="148" font-size="12" fill="#334155">LLM</text>
+  <rect x="120" y="136" width="720" height="18" fill="#f1f5f9"/>
+  <rect x="120" y="136" width="720" height="18" fill="#7c3aed"/>
+  <text x="850" y="150" font-size="12" font-weight="700" fill="#6d28d9">20 / 20</text>
+
+  <rect x="28" y="170" width="904" height="92" rx="8" fill="#fef2f2" stroke="#ef4444"/>
+  <text x="44" y="192" font-size="12" font-weight="700" fill="#7f1d1d">FinBERT's two misses are the ones a trader cares about most</text>
+  <text x="44" y="214" font-size="11" fill="#b91c1c">"US CPI comes in hotter than expected, raising odds of further rate hikes; stocks slide"</text>
+  <text x="620" y="214" font-size="11" font-weight="700" fill="#b91c1c">→ POSITIVE (wrong)</text>
+  <text x="44" y="234" font-size="11" fill="#b91c1c">"Company to cut 10% of workforce to reduce costs; shares rise 4%"</text>
+  <text x="620" y="234" font-size="11" font-weight="700" fill="#b91c1c">→ NEGATIVE (wrong)</text>
+  <text x="44" y="252" font-size="11" fill="#991b1b">It reads the tone of the words. Macro releases like CPI and PPI — the client's core ask — are exactly where tone and price disagree.</text>
+
+  <!-- test 2 -->
+  <text x="28" y="298" font-size="13" font-weight="700" fill="#0f172a">Test 2 — the 25 real headlines stored on Home right now</text>
+  <text x="28" y="318" font-size="12" fill="#475569">No answer key exists, so this compares each against the LLM impact analysis the pipeline already runs (15 articles had impacts).</text>
+  <text x="28" y="350" font-size="12" fill="#334155">FinBERT</text>
+  <rect x="120" y="338" width="720" height="18" fill="#f1f5f9"/>
+  <rect x="120" y="338" width="288" height="18" fill="#f59e0b"/>
+  <text x="418" y="352" font-size="12" font-weight="700" fill="#b45309">6 / 15 agree with the impact direction</text>
+  <text x="28" y="378" font-size="12" fill="#334155">LLM label</text>
+  <rect x="120" y="366" width="720" height="18" fill="#f1f5f9"/>
+  <rect x="120" y="366" width="528" height="18" fill="#7c3aed"/>
+  <text x="658" y="380" font-size="12" font-weight="700" fill="#6d28d9">11 / 15</text>
+
+  <g font-size="11">
+    <rect x="28" y="400" width="904" height="26" fill="#f1f5f9"/>
+    <text x="40" y="417" font-weight="700" fill="#334155">Real headline where they disagreed</text><text x="600" y="417" font-weight="700" fill="#334155">FinBERT</text><text x="700" y="417" font-weight="700" fill="#334155">LLM</text><text x="790" y="417" font-weight="700" fill="#334155">Who is right</text>
+    <text x="40" y="446" fill="#0f172a">Goldman Sachs rating lowered to "Hold"</text><text x="600" y="446" fill="#b45309">POSITIVE</text><text x="700" y="446" fill="#6d28d9">NEGATIVE</text><text x="790" y="446" fill="#15803d">LLM — a downgrade</text>
+    <line x1="28" y1="456" x2="932" y2="456" stroke="#e2e8f0"/>
+    <text x="40" y="476" fill="#0f172a">Palo Alto's AI growth faces a higher valuation bar</text><text x="600" y="476" fill="#b45309">POSITIVE</text><text x="700" y="476" fill="#6d28d9">NEGATIVE</text><text x="790" y="476" fill="#475569">LLM, arguably</text>
+    <line x1="28" y1="486" x2="932" y2="486" stroke="#e2e8f0"/>
+    <text x="40" y="506" fill="#0f172a">$10,000 in Tesla since S&amp;P inclusion vs an index fund</text><text x="600" y="506" fill="#b45309">NEUTRAL</text><text x="700" y="506" fill="#6d28d9">NEGATIVE</text><text x="790" y="506" fill="#475569">debatable</text>
+    <line x1="28" y1="516" x2="932" y2="516" stroke="#e2e8f0"/>
+    <text x="40" y="536" fill="#0f172a">"(LCII) Movement Within Algorithmic Entry Frameworks"</text><text x="600" y="536" fill="#b45309">NEUTRAL</text><text x="700" y="536" fill="#6d28d9">NEGATIVE</text><text x="790" y="536" fill="#15803d">FinBERT — it is filler</text>
+  </g>
+
+  <!-- verdict -->
+  <rect x="28" y="566" width="904" height="118" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="46" y="592" font-size="14" font-weight="700" fill="#14532d">Verdict: drop FinBERT. Ask the LLM call we already make for one extra field.</text>
+  <text x="46" y="614" font-size="12" fill="#15803d">The impact call already reads every article. Adding "sentiment" to its answer costs ~10 output tokens per article —</text>
+  <text x="46" y="632" font-size="12" fill="#15803d">about $0.50 a month at 1,000 headlines a day — and removes a whole external dependency that has broken silently before.</text>
+  <text x="46" y="656" font-size="12" fill="#15803d">FinBERT's one real advantage, speed (0.7 s vs ~10 s), doesn't matter: the LLM call already runs in the same hourly job.</text>
+  <text x="46" y="674" font-size="11" fill="#166534">Caveat, stated plainly: small samples (20 + 25). The LLM also over-reads vague articles. Enough to decide, not a benchmark.</text>
+</svg>

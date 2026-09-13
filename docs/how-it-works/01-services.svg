@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 700" width="960" height="700" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="960" height="700" fill="#ffffff"/>
+  <defs>
+    <marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">What each service does</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">Three codebases. The browser only ever talks to the API; the API is the only thing that touches the database.</text>
+
+  <!-- browser -->
+  <rect x="28" y="84" width="904" height="118" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+  <text x="46" y="110" font-size="15" font-weight="700" fill="#064e3b">ai-trader-frontend — Next.js, runs in the browser</text>
+  <text x="46" y="132" font-size="12" fill="#047857">Draws everything the user sees. Holds no secrets and computes nothing that matters.</text>
+  <g font-size="11" fill="#065f46">
+    <rect x="46" y="144" width="170" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/><text x="58" y="162" font-weight="600">Terminal</text><text x="58" y="178">charts, 21 chart types</text>
+    <rect x="226" y="144" width="170" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/><text x="238" y="162" font-weight="600">Indicators</text><text x="238" y="178">Pine results → chart</text>
+    <rect x="406" y="144" width="170" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/><text x="418" y="162" font-weight="600">Chat panel</text><text x="418" y="178">streams the AI's answer</text>
+    <rect x="586" y="144" width="160" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/><text x="598" y="162" font-weight="600">Home</text><text x="598" y="178">news, overview, alerts</text>
+    <rect x="756" y="144" width="160" height="44" rx="6" fill="#ffffff" stroke="#6ee7b7"/><text x="768" y="162" font-weight="600">Portfolio</text><text x="768" y="178">paper trades, P&amp;L</text>
+  </g>
+
+  <line x1="300" y1="202" x2="300" y2="236" stroke="#64748b" marker-end="url(#s)"/>
+  <text x="308" y="224" font-size="11" fill="#475569">HTTPS (REST)</text>
+  <line x1="640" y1="202" x2="640" y2="236" stroke="#64748b" marker-end="url(#s)"/>
+  <line x1="660" y1="236" x2="660" y2="202" stroke="#64748b" marker-end="url(#s)"/>
+  <text x="670" y="224" font-size="11" fill="#475569">Socket.IO: live ticks, alerts</text>
+
+  <!-- api -->
+  <rect x="28" y="240" width="904" height="150" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="46" y="266" font-size="15" font-weight="700" fill="#1e3a8a">ai-trader-api — NestJS, the front door</text>
+  <text x="46" y="288" font-size="12" fill="#1d4ed8">Login, permissions, all storage, and the live push to browsers. Anything it cannot answer itself, it forwards to signals.</text>
+  <g font-size="11" fill="#1e40af">
+    <rect x="46" y="300" width="212" height="74" rx="6" fill="#ffffff" stroke="#93c5fd"/><text x="58" y="318" font-weight="600">Owns the data</text><text x="58" y="334">users, watchlist, paper account,</text><text x="58" y="350">chat history, saved charts,</text><text x="58" y="366">news results, alerts</text>
+    <rect x="268" y="300" width="212" height="74" rx="6" fill="#ffffff" stroke="#93c5fd"/><text x="280" y="318" font-weight="600">Paper trading engine</text><text x="280" y="334">orders, risk limits, positions,</text><text x="280" y="350">square-off at 15:20 IST</text><text x="280" y="366">(NSE/BSE, in rupees)</text>
+    <rect x="490" y="300" width="212" height="74" rx="6" fill="#ffffff" stroke="#93c5fd"/><text x="502" y="318" font-weight="600">Live push (Socket.IO)</text><text x="502" y="334">counts who watches a symbol,</text><text x="502" y="350">asks signals to start/stop,</text><text x="502" y="366">fans ticks out to browsers</text>
+    <rect x="712" y="300" width="204" height="74" rx="6" fill="#ffffff" stroke="#93c5fd"/><text x="724" y="318" font-weight="600">Proxy to signals</text><text x="724" y="334">market data, Pine runs,</text><text x="724" y="350">chat stream, with timeouts</text><text x="724" y="366">and retries</text>
+  </g>
+
+  <line x1="300" y1="390" x2="300" y2="424" stroke="#64748b" marker-end="url(#s)"/>
+  <text x="308" y="412" font-size="11" fill="#475569">HTTP on the box</text>
+  <line x1="640" y1="424" x2="640" y2="390" stroke="#64748b" marker-end="url(#s)"/>
+  <text x="650" y="412" font-size="11" fill="#475569">results POSTed back (shared key)</text>
+
+  <!-- signals -->
+  <rect x="28" y="428" width="904" height="180" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+  <text x="46" y="454" font-size="15" font-weight="700" fill="#78350f">ai-trader-signals — Python, the brain</text>
+  <text x="46" y="476" font-size="12" fill="#b45309">Everything that needs market data, maths or an AI model. Stores nothing permanently — it sends results to the API.</text>
+  <g font-size="11" fill="#92400e">
+    <rect x="46" y="488" width="170" height="104" rx="6" fill="#ffffff" stroke="#fcd34d"/><text x="58" y="506" font-weight="600">Market data</text><text x="58" y="522">bars and quotes from</text><text x="58" y="538">Kite, Deriv, yfinance;</text><text x="58" y="554">live tick streams</text><text x="58" y="570">→ Redis</text>
+    <rect x="226" y="488" width="170" height="104" rx="6" fill="#ffffff" stroke="#fcd34d"/><text x="238" y="506" font-weight="600">Pine sandbox</text><text x="238" y="522">runs indicator code</text><text x="238" y="538">in a locked-down</text><text x="238" y="554">Node worker</text><text x="238" y="570">(PineTS)</text>
+    <rect x="406" y="488" width="170" height="104" rx="6" fill="#ffffff" stroke="#fcd34d"/><text x="418" y="506" font-weight="600">Chat agent</text><text x="418" y="522">LLM + tools: chart,</text><text x="418" y="538">market, portfolio,</text><text x="418" y="554">web search, backtests,</text><text x="418" y="570">draws on the chart</text>
+    <rect x="586" y="488" width="160" height="104" rx="6" fill="#ffffff" stroke="#fcd34d"/><text x="598" y="506" font-weight="600">Scheduled jobs</text><text x="598" y="522">news (hourly)</text><text x="598" y="538">drift check (hourly)</text><text x="598" y="554">Reddit (2-hourly)</text><text x="598" y="570">overview (2×/day)</text>
+    <rect x="756" y="488" width="160" height="104" rx="6" fill="#ffffff" stroke="#fcd34d"/><text x="768" y="506" font-weight="600">Backtests</text><text x="768" y="522">strategies run on real</text><text x="768" y="538">bars with trading</text><text x="768" y="554">costs included</text>
+  </g>
+
+  <!-- externals -->
+  <rect x="28" y="624" width="904" height="58" rx="10" fill="#faf5ff" stroke="#a855f7"/>
+  <text x="46" y="646" font-size="12" font-weight="700" fill="#581c87">Outside services</text>
+  <text x="46" y="666" font-size="11" fill="#7e22ce">MongoDB Atlas (storage) · Redis (cache, live-tick relay) · Bedrock Mantle LLM (DeepSeek V3.2) · HuggingFace FinBERT · Zerodha Kite · Deriv · yfinance · Dukascopy · news APIs · Tavily</text>
+</svg>

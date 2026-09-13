@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 800" width="960" height="800" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="960" height="800" fill="#ffffff"/>
+  <defs>
+    <marker id="l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">Where the LLM is used, and what else we could use</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">Every AI feature goes through one client, to one model, over an OpenAI-compatible API hosted by AWS (Bedrock Mantle, Mumbai region).</text>
+
+  <!-- callers -->
+  <text x="28" y="96" font-size="13" font-weight="700" fill="#0f172a">Who calls it</text>
+  <g font-size="11">
+    <rect x="28" y="106" width="420" height="58" rx="6" fill="#f5f3ff" stroke="#a78bfa"/>
+    <text x="42" y="126" font-weight="700" fill="#4c1d95">Chat agent · on demand · the heaviest user</text>
+    <text x="42" y="143" fill="#6d28d9">up to 6 tool rounds per question: reads the chart, fetches data,</text>
+    <text x="42" y="157" fill="#6d28d9">checks your portfolio, web-searches, backtests, draws on the chart</text>
+    <rect x="28" y="172" width="420" height="44" rx="6" fill="#f5f3ff" stroke="#a78bfa"/>
+    <text x="42" y="192" font-weight="700" fill="#4c1d95">Indicator writer · on demand, from chat</text>
+    <text x="42" y="207" fill="#6d28d9">writes Pine Script, validated in the sandbox before it's attached</text>
+    <rect x="28" y="224" width="420" height="44" rx="6" fill="#f5f3ff" stroke="#a78bfa"/>
+    <text x="42" y="244" font-weight="700" fill="#4c1d95">News impact · every hour</text>
+    <text x="42" y="259" fill="#6d28d9">8 articles per call · retries once at a slightly higher temperature</text>
+    <rect x="28" y="276" width="420" height="44" rx="6" fill="#f5f3ff" stroke="#a78bfa"/>
+    <text x="42" y="296" font-weight="700" fill="#4c1d95">Market overview · 06:30 and 18:00 IST</text>
+    <text x="42" y="311" fill="#6d28d9">global markets snapshot → a short read of the day, from real numbers</text>
+    <rect x="28" y="328" width="420" height="44" rx="6" fill="#f5f3ff" stroke="#a78bfa"/>
+    <text x="42" y="348" font-weight="700" fill="#4c1d95">Reddit sentiment · every 2 hours</text>
+    <text x="42" y="363" fill="#6d28d9">Tavily fetches real snippets → the LLM summarises the crowd mood</text>
+    <rect x="28" y="380" width="420" height="44" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-dasharray="4 3"/>
+    <text x="42" y="400" font-weight="700" fill="#64748b">Signal generation · hidden</text>
+    <text x="42" y="415" fill="#94a3b8">up to 4 tool rounds · off until it has a proven track record</text>
+    <rect x="28" y="432" width="420" height="44" rx="6" fill="#ecfdf5" stroke="#86efac"/>
+    <text x="42" y="452" font-weight="700" fill="#14532d">No LLM: drift check, charts, Pine, paper trading</text>
+    <text x="42" y="467" fill="#15803d">plain maths and data — deterministic, no model cost</text>
+  </g>
+
+  <!-- client -->
+  <line x1="448" y1="290" x2="486" y2="290" stroke="#64748b" marker-end="url(#l)"/>
+  <rect x="490" y="106" width="442" height="370" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="508" y="132" font-size="13" font-weight="700" fill="#7c2d12">One LLM client — app/llm/client.py</text>
+  <g font-size="11" fill="#9a3412">
+    <text x="508" y="156">OpenAI Python SDK, pointed at AWS:</text>
+    <text x="508" y="174" font-family="ui-monospace,Consolas,monospace" fill="#7c2d12">bedrock-mantle.ap-south-1.api.aws/v1</text>
+    <text x="508" y="200">Model today:</text>
+    <text x="596" y="200" font-weight="700" fill="#7c2d12">deepseek.v3.2</text>
+    <text x="508" y="220">about $0.62 in / $1.85 out per million tokens</text>
+    <text x="508" y="246">Auth: a Bedrock API key. Production sets one;</text>
+    <text x="508" y="262">otherwise it mints one from AWS IAM keys, valid</text>
+    <text x="508" y="278">12 h, refreshed after 11 h.</text>
+    <text x="508" y="304">Swapping to any Mantle model is one setting:</text>
+    <text x="508" y="322" font-family="ui-monospace,Consolas,monospace" fill="#7c2d12">BEDROCK_MODEL_ID=&lt;model id&gt;</text>
+    <text x="508" y="348">Scheduled jobs run at low temperature and parse JSON;</text>
+    <text x="508" y="364">a malformed answer is dropped, never guessed at.</text>
+  </g>
+  <rect x="508" y="386" width="406" height="72" rx="6" fill="#ffffff" stroke="#fdba74"/>
+  <text x="520" y="406" font-size="11" font-weight="700" fill="#7c2d12">Separate from the LLM: FinBERT</text>
+  <text x="520" y="423" font-size="11" fill="#9a3412">a small sentiment model on HuggingFace's free API.</text>
+  <text x="520" y="439" font-size="11" fill="#9a3412">Only job: the badge on each headline.</text>
+  <text x="520" y="453" font-size="11" fill="#9a3412">Recommended for removal — see the FinBERT test.</text>
+
+  <!-- models -->
+  <text x="28" y="514" font-size="13" font-weight="700" fill="#0f172a">Models your account can use in ap-south-1 (checked live, Sep 2026)</text>
+  <rect x="28" y="524" width="560" height="260" rx="10" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="44" y="548" font-size="12" font-weight="700" fill="#14532d">On Mantle — 38 models, work with today's code</text>
+  <g font-size="11">
+    <text x="44" y="572" font-weight="600" fill="#14532d">DeepSeek</text><text x="170" y="572" fill="#15803d">v3.2 (in use) · v3.1</text>
+    <text x="44" y="592" font-weight="600" fill="#14532d">Qwen 3</text><text x="170" y="592" fill="#15803d">235B · Next 80B · 32B · Coder 480B / 30B · VL 235B</text>
+    <text x="44" y="612" font-weight="600" fill="#14532d">OpenAI open</text><text x="170" y="612" fill="#15803d">gpt-oss 120B · 20B · safeguard variants</text>
+    <text x="44" y="632" font-weight="600" fill="#14532d">Z.AI GLM</text><text x="170" y="632" fill="#15803d">GLM-5 · 4.7 · 4.7-flash · 4.6</text>
+    <text x="44" y="652" font-weight="600" fill="#14532d">Moonshot Kimi</text><text x="170" y="652" fill="#15803d">K2.5 · K2 Thinking</text>
+    <text x="44" y="672" font-weight="600" fill="#14532d">MiniMax</text><text x="170" y="672" fill="#15803d">M2.5 · M2.1 · M2</text>
+    <text x="44" y="692" font-weight="600" fill="#14532d">Mistral</text><text x="170" y="692" fill="#15803d">Large 3 (675B) · Devstral 2 · Magistral · Ministral 3/8/14B</text>
+    <text x="44" y="712" font-weight="600" fill="#14532d">NVIDIA</text><text x="170" y="712" fill="#15803d">Nemotron Super 3 120B · Nano 9B / 12B / 30B</text>
+    <text x="44" y="732" font-weight="600" fill="#14532d">Google, Writer</text><text x="170" y="732" fill="#15803d">Gemma 3 4B / 12B / 27B · Palmyra Vision 7B</text>
+    <text x="44" y="762" fill="#166534">All open-weight. Swapping is an env var — no code change.</text>
+  </g>
+
+  <rect x="604" y="524" width="328" height="260" rx="10" fill="#faf5ff" stroke="#a855f7"/>
+  <text x="620" y="548" font-size="12" font-weight="700" fill="#581c87">Bedrock only — need a new client</text>
+  <g font-size="11">
+    <text x="620" y="572" font-weight="600" fill="#581c87">Anthropic Claude</text>
+    <text x="620" y="588" fill="#7e22ce">Haiku 4.5 · Sonnet 4.x / 5</text>
+    <text x="620" y="604" fill="#7e22ce">Opus 4.x / 5 · Fable 5 / 5.1</text>
+    <text x="620" y="628" font-weight="600" fill="#581c87">OpenAI</text>
+    <text x="620" y="644" fill="#7e22ce">GPT-5.6 Luna / Sol / Terra · GPT-6 Astra</text>
+    <text x="620" y="668" font-weight="600" fill="#581c87">Also</text>
+    <text x="620" y="684" fill="#7e22ce">Amazon Nova · xAI Grok 4.6 · Llama 3</text>
+    <text x="620" y="712" fill="#6b21a8">These use Bedrock's Converse API and</text>
+    <text x="620" y="728" fill="#6b21a8">mostly cross-region inference profiles,</text>
+    <text x="620" y="744" fill="#6b21a8">not the OpenAI-compatible endpoint —</text>
+    <text x="620" y="760" fill="#6b21a8">so switching means code work.</text>
+  </g>
+</svg>

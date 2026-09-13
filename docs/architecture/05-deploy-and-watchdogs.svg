@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 620" width="940" height="620" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="940" height="620" fill="#ffffff"/>
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">Deploys and watchdogs — where robustness actually comes from</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">Today a deploy takes everything down, and nothing notices when a scheduled job dies quietly.</text>
+
+  <text x="28" y="96" font-size="13" font-weight="700" fill="#7f1d1d">Deploy today — minutes of full outage, every time</text>
+  <rect x="28" y="108" width="150" height="48" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="42" y="130" font-size="11" font-weight="600" fill="#7f1d1d">ssh + git pull</text>
+  <text x="42" y="147" font-size="10" fill="#b91c1c">three repos</text>
+  <rect x="204" y="108" width="170" height="48" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="218" y="130" font-size="11" font-weight="600" fill="#7f1d1d">compose down</text>
+  <text x="218" y="147" font-size="10" fill="#b91c1c">everything stops here</text>
+  <rect x="400" y="108" width="200" height="48" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="414" y="130" font-size="11" font-weight="600" fill="#7f1d1d">build (next build needs ~2 GB)</text>
+  <text x="414" y="147" font-size="10" fill="#b91c1c">this is what forces the outage</text>
+  <rect x="626" y="108" width="150" height="48" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="640" y="130" font-size="11" font-weight="600" fill="#7f1d1d">up -d</text>
+  <text x="640" y="147" font-size="10" fill="#b91c1c">hope it comes back</text>
+  <line x1="178" y1="132" x2="198" y2="132" stroke="#64748b" marker-end="url(#b)"/>
+  <line x1="374" y1="132" x2="394" y2="132" stroke="#64748b" marker-end="url(#b)"/>
+  <line x1="600" y1="132" x2="620" y2="132" stroke="#64748b" marker-end="url(#b)"/>
+  <text x="792" y="136" font-size="12" font-weight="700" fill="#b91c1c">no rollback</text>
+
+  <text x="28" y="196" font-size="13" font-weight="700" fill="#14532d">Deploy after — seconds, one unit at a time, with a way back</text>
+  <rect x="28" y="208" width="168" height="64" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="42" y="230" font-size="11" font-weight="600" fill="#14532d">GitHub Actions</text>
+  <text x="42" y="247" font-size="10" fill="#15803d">builds Next standalone</text>
+  <text x="42" y="262" font-size="10" fill="#15803d">off-box, free minutes</text>
+  <rect x="222" y="208" width="168" height="64" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="236" y="230" font-size="11" font-weight="600" fill="#14532d">rsync artifact</text>
+  <text x="236" y="247" font-size="10" fill="#15803d">box never compiles</text>
+  <text x="236" y="262" font-size="10" fill="#15803d">anything again</text>
+  <rect x="416" y="208" width="168" height="64" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="430" y="230" font-size="11" font-weight="600" fill="#14532d">gate: lint + tests</text>
+  <text x="430" y="247" font-size="10" fill="#15803d">restart only on pass</text>
+  <text x="430" y="262" font-size="10" fill="#15803d">(38 test files exist)</text>
+  <rect x="610" y="208" width="168" height="64" rx="6" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="624" y="230" font-size="11" font-weight="600" fill="#14532d">systemctl restart</text>
+  <text x="624" y="247" font-size="10" fill="#15803d">one unit · ~4 s</text>
+  <text x="624" y="262" font-size="10" fill="#15803d">socket-activated: queued</text>
+  <rect x="804" y="208" width="108" height="64" rx="6" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="818" y="230" font-size="11" font-weight="600" fill="#78350f">health check</text>
+  <text x="818" y="247" font-size="10" fill="#b45309">fail → checkout</text>
+  <text x="818" y="262" font-size="10" fill="#b45309">old SHA, restart</text>
+  <line x1="196" y1="240" x2="216" y2="240" stroke="#64748b" marker-end="url(#b)"/>
+  <line x1="390" y1="240" x2="410" y2="240" stroke="#64748b" marker-end="url(#b)"/>
+  <line x1="584" y1="240" x2="604" y2="240" stroke="#64748b" marker-end="url(#b)"/>
+  <line x1="778" y1="240" x2="798" y2="240" stroke="#64748b" marker-end="url(#b)"/>
+
+  <text x="28" y="316" font-size="13" font-weight="700" fill="#0f172a">Three watchdog layers — each catches what the one below cannot</text>
+
+  <rect x="28" y="332" width="884" height="76" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="46" y="356" font-size="12" font-weight="700" fill="#1e3a8a">1 · systemd — catches a process that crashed or hung</text>
+  <text x="46" y="376" font-size="11" fill="#1d4ed8">Restart=always, RestartSec=2, StartLimitBurst=5 (a poison loop stops the unit instead of thrashing swap).</text>
+  <text x="46" y="394" font-size="11" fill="#1d4ed8">WatchdogSec=60 with sd_notify from the event loop — proves the loop is turning, not merely that a socket answers.</text>
+
+  <rect x="28" y="420" width="884" height="76" rx="8" fill="#f0fdf4" stroke="#16a34a"/>
+  <text x="46" y="444" font-size="12" font-weight="700" fill="#14532d">2 · in-app heartbeat — catches a job that silently stopped being scheduled</text>
+  <text x="46" y="464" font-size="11" fill="#15803d">Every job writes job:&lt;name&gt;:last_ok to Redis. A sweeper compares each against its interval × 2 and raises an alert.</text>
+  <text x="46" y="482" font-size="11" fill="#15803d">This is the gap today: if the scheduler dies, news just stops and nobody finds out until someone looks at the page.</text>
+
+  <rect x="28" y="508" width="884" height="76" rx="8" fill="#faf5ff" stroke="#a855f7"/>
+  <text x="46" y="532" font-size="12" font-weight="700" fill="#581c87">3 · off-box watchers — catch the box itself being dead, which layers 1 and 2 cannot</text>
+  <text x="46" y="552" font-size="11" fill="#7e22ce">Healthchecks.io (free, 20 checks): each job pings on success; a missed ping alerts. UptimeRobot (free, 50 monitors, 5 min): /health.</text>
+  <text x="46" y="570" font-size="11" fill="#7e22ce">Not a GitHub Actions cron — it bills per started minute, so a 5-minute prober would burn ~8,640 of the 2,000 free minutes.</text>
+</svg>

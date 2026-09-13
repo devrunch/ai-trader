@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 620" width="940" height="620" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="940" height="620" fill="#ffffff"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">Memory budget — measured on the box, not estimated</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">One scale for both bars. Containers from docker stats, the Docker daemons from ps. Both bars exclude the kernel and page cache.</text>
+
+  <text x="28" y="96" font-size="12" font-weight="700" fill="#334155">NOW — 917 MB for the app and its runtime · 601 MB available · 830 MB already in swap</text>
+  <rect x="28" y="108" width="165" height="34" fill="#ef4444"/>
+  <rect x="193" y="108" width="34" height="34" fill="#f87171"/>
+  <rect x="227" y="108" width="227" height="34" fill="#f59e0b"/>
+  <rect x="454" y="108" width="248" height="34" fill="#fbbf24"/>
+  <rect x="702" y="108" width="25" height="34" fill="#fde68a"/>
+  <rect x="727" y="108" width="117" height="34" fill="#34d399"/>
+  <rect x="844" y="108" width="40" height="34" fill="#6ee7b7"/>
+  <rect x="884" y="108" width="29" height="34" fill="#93c5fd"/>
+  <text x="32" y="162" font-size="11" fill="#7f1d1d">dockerd 171</text>
+  <text x="164" y="180" font-size="11" fill="#7f1d1d">containerd 35</text>
+  <text x="231" y="162" font-size="11" fill="#78350f">signals 235</text>
+  <text x="458" y="162" font-size="11" fill="#78350f">celery worker 257</text>
+  <text x="664" y="180" font-size="11" fill="#78350f">beat 26</text>
+  <text x="731" y="162" font-size="11" fill="#064e3b">api 121</text>
+  <text x="800" y="180" font-size="11" fill="#064e3b">next 42</text>
+  <text x="846" y="198" font-size="11" fill="#1e3a8a">caddy+redis 30</text>
+
+  <text x="28" y="240" font-size="12" font-weight="700" fill="#334155">AFTER — 518 MB · about 1.0 GB available · swap can drain</text>
+  <rect x="28" y="252" width="227" height="34" fill="#f59e0b"/>
+  <rect x="255" y="252" width="87" height="34" fill="#a3e635"/>
+  <rect x="342" y="252" width="117" height="34" fill="#34d399"/>
+  <rect x="459" y="252" width="40" height="34" fill="#6ee7b7"/>
+  <rect x="499" y="252" width="29" height="34" fill="#93c5fd"/>
+  <rect x="528" y="252" width="385" height="34" fill="#f1f5f9" stroke="#94a3b8" stroke-dasharray="4 3"/>
+  <text x="32" y="306" font-size="11" fill="#78350f">signals 235</text>
+  <text x="259" y="324" font-size="11" fill="#3f6212">newsd ~90</text>
+  <text x="346" y="306" font-size="11" fill="#064e3b">api 121</text>
+  <text x="440" y="324" font-size="11" fill="#064e3b">next 42</text>
+  <text x="503" y="306" font-size="11" fill="#1e3a8a">caddy+redis 30</text>
+  <text x="596" y="274" font-size="13" font-weight="700" fill="#475569">399 MB returned — room for the news engine</text>
+
+  <text x="28" y="372" font-size="13" font-weight="700" fill="#0f172a">How the 399 MB adds up</text>
+  <rect x="28" y="386" width="284" height="96" rx="8" fill="#fef2f2" stroke="#ef4444"/>
+  <text x="44" y="408" font-size="12" font-weight="700" fill="#7f1d1d">Delete Docker · −206 MB</text>
+  <text x="44" y="428" font-size="11" fill="#b91c1c">dockerd + containerd, gone.</text>
+  <text x="44" y="446" font-size="11" fill="#b91c1c">systemd + one venv instead.</text>
+  <text x="44" y="464" font-size="11" fill="#b91c1c">Also frees 6.75 GB of build cache.</text>
+
+  <rect x="328" y="386" width="284" height="96" rx="8" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="344" y="408" font-size="12" font-weight="700" fill="#78350f">Delete Celery worker + beat · −283 MB</text>
+  <text x="344" y="428" font-size="11" fill="#b45309">Two more copies of an interpreter</text>
+  <text x="344" y="446" font-size="11" fill="#b45309">that already runs in signals. The cheap</text>
+  <text x="344" y="464" font-size="11" fill="#b45309">cron jobs move into its scheduler.</text>
+
+  <rect x="628" y="386" width="284" height="96" rx="8" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="644" y="408" font-size="12" font-weight="700" fill="#14532d">Add newsd · +90 MB</text>
+  <text x="644" y="428" font-size="11" fill="#15803d">Would be ~155 MB if it imported</text>
+  <text x="644" y="446" font-size="11" fill="#15803d">yfinance, which it only uses for one</text>
+  <text x="644" y="464" font-size="11" fill="#15803d">HTTP call. Dropping it saves 65 MB.</text>
+
+  <text x="28" y="522" font-size="13" font-weight="700" fill="#0f172a">Import cost, measured inside the running signals container</text>
+  <rect x="28" y="536" width="22" height="18" fill="#94a3b8"/><text x="58" y="550" font-size="12" fill="#334155">interpreter 11 MB</text>
+  <rect x="200" y="536" width="50" height="18" fill="#60a5fa"/><text x="258" y="550" font-size="12" fill="#334155">+ httpx, redis 25 MB</text>
+  <rect x="430" y="536" width="130" height="18" fill="#f59e0b"/><text x="568" y="550" font-size="12" fill="#334155">+ yfinance, pulls pandas 65 MB</text>
+  <rect x="28" y="564" width="88" height="18" fill="#ef4444"/><text x="124" y="578" font-size="12" fill="#334155">+ pandas_ta 44 MB</text>
+  <text x="300" y="578" font-size="12" font-weight="600" fill="#0f172a">newsd needs only the grey and blue. Orange and red belong to the terminal.</text>
+  <text x="28" y="606" font-size="12" fill="#475569">Same repo, two entrypoints. The import boundary is what keeps newsd small — enforced by a test, not by discipline.</text>
+</svg>

@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 620" width="940" height="620" font-family="ui-sans-serif,-apple-system,Segoe UI,Roboto,sans-serif">
+  <rect width="940" height="620" fill="#ffffff"/>
+  <text x="28" y="40" font-size="20" font-weight="700" fill="#0f172a">Today — one 2 GB box, everything in Docker</text>
+  <text x="28" y="62" font-size="13" fill="#64748b">t4g.small · 2 vCPU burstable · 1835 MB RAM · 601 MB free · 2 GB swap, 830 MB already used</text>
+
+  <!-- box -->
+  <rect x="28" y="84" width="560" height="470" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="46" y="110" font-size="13" font-weight="700" fill="#334155">EC2 t4g.small (ap-south-1)</text>
+  <text x="46" y="128" font-size="11" fill="#94a3b8">docker compose · 7 containers · dockerd overhead on top</text>
+
+  <!-- caddy -->
+  <rect x="46" y="144" width="524" height="46" rx="6" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="62" y="166" font-size="13" font-weight="600" fill="#0c4a6e">caddy — TLS, reverse proxy :80/:443</text>
+  <text x="62" y="182" font-size="11" fill="#0369a1">22 MB</text>
+
+  <!-- web tier -->
+  <rect x="46" y="202" width="256" height="86" rx="6" fill="#ecfdf5" stroke="#059669"/>
+  <text x="62" y="224" font-size="13" font-weight="600" fill="#064e3b">frontend — Next.js 15</text>
+  <text x="62" y="242" font-size="11" fill="#047857">42 MB · terminal, charts, news UI</text>
+  <text x="62" y="262" font-size="11" fill="#047857">rebuilt every deploy (public URL is</text>
+  <text x="62" y="278" font-size="11" fill="#047857">baked into the bundle)</text>
+
+  <rect x="314" y="202" width="256" height="86" rx="6" fill="#ecfdf5" stroke="#059669"/>
+  <text x="330" y="224" font-size="13" font-weight="600" fill="#064e3b">api — NestJS</text>
+  <text x="330" y="242" font-size="11" fill="#047857">121 MB · owns all persistence</text>
+  <text x="330" y="262" font-size="11" fill="#047857">Socket.IO fan-out: ticks + alerts</text>
+  <text x="330" y="278" font-size="11" fill="#047857">internal endpoints (shared key)</text>
+
+  <!-- python tier -->
+  <rect x="46" y="300" width="256" height="100" rx="6" fill="#fef3c7" stroke="#d97706"/>
+  <text x="62" y="322" font-size="13" font-weight="600" fill="#78350f">signals — FastAPI</text>
+  <text x="62" y="340" font-size="11" fill="#b45309">235 MB · market data, chat agent</text>
+  <text x="62" y="358" font-size="11" fill="#b45309">Kite WS (NSE/BSE/MCX ticks)</text>
+  <text x="62" y="376" font-size="11" fill="#b45309">Deriv WS (forex/metals, 1 Hz)</text>
+  <text x="62" y="392" font-size="11" fill="#b45309">Pine sandbox (Node subprocess)</text>
+
+  <rect x="314" y="300" width="256" height="100" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="330" y="322" font-size="13" font-weight="600" fill="#7f1d1d">signals-worker — Celery</text>
+  <text x="330" y="340" font-size="11" fill="#b91c1c">257 MB · largest single process</text>
+  <text x="330" y="358" font-size="11" fill="#b91c1c">news pipeline, drift, Reddit,</text>
+  <text x="330" y="376" font-size="11" fill="#b91c1c">market overview, broker session</text>
+  <text x="330" y="392" font-size="11" fill="#b91c1c">imports pandas + pandas-ta</text>
+
+  <rect x="46" y="412" width="256" height="56" rx="6" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="62" y="434" font-size="13" font-weight="600" fill="#334155">signals-beat — scheduler</text>
+  <text x="62" y="452" font-size="11" fill="#475569">26 MB · 7 cron jobs</text>
+
+  <rect x="314" y="412" width="256" height="56" rx="6" fill="#f1f5f9" stroke="#64748b"/>
+  <text x="330" y="434" font-size="13" font-weight="600" fill="#334155">redis</text>
+  <text x="330" y="452" font-size="11" fill="#475569">8 MB · caches + tick pub/sub</text>
+
+  <rect x="46" y="482" width="524" height="54" rx="6" fill="#fff1f2" stroke="#e11d48" stroke-dasharray="4 3"/>
+  <text x="62" y="503" font-size="12" font-weight="600" fill="#9f1239">Deploy = down → build → up, on this same box</text>
+  <text x="62" y="522" font-size="11" fill="#be123c">Full outage each time; it cannot hold old and new containers at once.</text>
+
+  <!-- external -->
+  <rect x="616" y="84" width="296" height="470" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="634" y="110" font-size="13" font-weight="700" fill="#581c87">Off the box</text>
+
+  <rect x="634" y="126" width="260" height="52" rx="6" fill="#ffffff" stroke="#c084fc"/>
+  <text x="650" y="147" font-size="12" font-weight="600" fill="#6b21a8">MongoDB Atlas</text>
+  <text x="650" y="165" font-size="11" fill="#7e22ce">all persistence · free M0 tier</text>
+
+  <rect x="634" y="188" width="260" height="52" rx="6" fill="#ffffff" stroke="#c084fc"/>
+  <text x="650" y="209" font-size="12" font-weight="600" fill="#6b21a8">AWS SQS</text>
+  <text x="650" y="227" font-size="11" fill="#7e22ce">Celery broker · 1 M req/mo free</text>
+
+  <rect x="634" y="250" width="260" height="70" rx="6" fill="#ffffff" stroke="#c084fc"/>
+  <text x="650" y="271" font-size="12" font-weight="600" fill="#6b21a8">Market data vendors</text>
+  <text x="650" y="289" font-size="11" fill="#7e22ce">Zerodha Kite · Deriv · yfinance</text>
+  <text x="650" y="307" font-size="11" fill="#7e22ce">Dukascopy (tick volume)</text>
+
+  <rect x="634" y="330" width="260" height="88" rx="6" fill="#ffffff" stroke="#c084fc"/>
+  <text x="650" y="351" font-size="12" font-weight="600" fill="#6b21a8">AI / news vendors</text>
+  <text x="650" y="369" font-size="11" fill="#7e22ce">LLM (impact + chat + briefs)</text>
+  <text x="650" y="387" font-size="11" fill="#7e22ce">HuggingFace FinBERT sentiment</text>
+  <text x="650" y="405" font-size="11" fill="#7e22ce">NewsAPI · newsdata · AlphaVantage</text>
+
+  <rect x="634" y="428" width="260" height="108" rx="6" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="650" y="449" font-size="12" font-weight="600" fill="#92400e">Not present today</text>
+  <text x="650" y="468" font-size="11" fill="#b45309">no CI · no staging copy</text>
+  <text x="650" y="486" font-size="11" fill="#b45309">no alert if a cron job dies</text>
+  <text x="650" y="504" font-size="11" fill="#b45309">no error tracking</text>
+  <text x="650" y="522" font-size="11" fill="#b45309">public IP changes on restart</text>
+
+  <text x="28" y="582" font-size="12" fill="#475569">Containers total ≈ 711 MB, plus 206 MB for dockerd and containerd themselves — which is why swap is already in use.</text>
+  <text x="28" y="602" font-size="12" fill="#475569">Adding a news engine as new always-on processes is what this box cannot absorb.</text>
+</svg>
