@@ -37,7 +37,7 @@ Small, low risk, worth doing first.
 
 ## Phase 1 — AI and news quality
 
-- [ ] **A1 · Replace FinBERT with an LLM sentiment field**
+- [x] **A1 · Replace FinBERT with an LLM sentiment field** — 2026-09-13
   - **Why:** FinBERT misreads direction on exactly the headlines that matter ("hotter CPI" → positive). The LLM already reads every article, so the field costs ~$0.50/month. Evidence: [FinBERT test](how-it-works/README.md#5-finbert-do-we-need-it).
   - **Done when:**
     - the impact prompt returns `sentiment` per article;
@@ -93,7 +93,7 @@ Order matters: each step creates the headroom the next one needs. Details: [arch
 - [ ] **B5 · Remove Docker**
   - **Why:** −206 MB, and deploys stop being full outages.
   - **Done when:**
-    - the frontend builds in GitHub Actions and is rsynced to the box;
+    - [x] the frontend image is built in GitHub Actions (ARM) and pulled from GHCR — deploys dropped from minutes of outage to ~66 s;
     - API, Caddy and Redis run as systemd units;
     - Docker is uninstalled;
     - free memory is ≈ 1 GB (from 601 MB).
@@ -113,11 +113,11 @@ All four repos are public, so Actions minutes are free and unlimited.
   - **Why:** there's no CI; a broken commit is found at deploy time, on the live box.
   - **Done when:** each repo runs its checks on push and PR — signals: `ruff` + `pytest`; api: `tsc` + `eslint` + `jest`; frontend: `tsc` + `eslint` + `vitest` — and a red run is visible on the commit.
 
-- [ ] **C2 · Deploy from GitHub**
+- [x] **C2 · Deploy from GitHub** — 2026-09-13
   - **Why:** deploying means SSH-ing in by hand and remembering to copy umbrella files first.
   - **Done when:** a manual "Deploy" workflow (and optionally push to main, after C1 passes) SSHes in with a dedicated deploy key, restricted on the box to running `deploy.sh`, then checks `/api/health`.
 
-- [ ] **C3 · Build the frontend in Actions** — same as B5's first step: build Next.js off the box and rsync it, so deploys stop compiling on a 2 GB server.
+- [x] **C3 · Build the frontend in Actions** — 2026-09-13 — same as B5's first step: build Next.js off the box and rsync it, so deploys stop compiling on a 2 GB server.
 
 ---
 

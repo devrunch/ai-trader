@@ -25,15 +25,13 @@ services:
       - api
       - frontend
 
-  # NEXT_PUBLIC_API_URL is inlined into the JavaScript bundle at `next build`,
-  # not read at container start — so it can only be set as a BUILD arg, and
-  # the frontend image has to be rebuilt on every deploy where the public
-  # hostname could have changed (i.e. every deploy, unless an Elastic IP is
-  # attached and the hostname is therefore stable).
+  # Built and published by the frontend repo's CI (ARM, for this box), never
+  # built here: `next build` needs most of this box's 2 GB, which is what made
+  # every deploy a full outage. NEXT_PUBLIC_API_URL is inlined at build time,
+  # so CI bakes in the public origin; a hostname change needs a rebuild there.
   frontend:
-    build:
-      args:
-        NEXT_PUBLIC_API_URL: https://${PUBLIC_HOSTNAME}
+    image: ghcr.io/devrunch/ai-trader-frontend:latest
+    pull_policy: always
     environment:
       NEXT_PUBLIC_API_URL: https://${PUBLIC_HOSTNAME}
 

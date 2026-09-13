@@ -3,11 +3,9 @@
 #   ./deploy.sh
 #
 # What this does that a plain `docker compose up` cannot: resolves the
-# instance's own public hostname from EC2's metadata service and rebuilds the
-# frontend with it baked in. That value cannot be known ahead of time and
-# cannot be set at container-start — Next.js inlines NEXT_PUBLIC_API_URL into
-# the JS bundle at `next build`, so a stale hostname means every browser
-# fetch goes to the wrong origin until the next deploy.
+# instance's own public hostname from EC2's metadata service, which Caddy and
+# the API both need. The frontend's copy of that origin is inlined into its JS
+# bundle at build time instead, which now happens in CI.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -43,16 +41,17 @@ for repo in ai-trader-frontend ai-trader-api ai-trader-signals; do
   git -C "$repo" pull --ff-only
 done
 
-# Stop before building, not after: this box has 2GB RAM, and `next build`
-# alone can use most of that. Building while the previous generation's five
-# containers are still live competing for the same RAM is what took the whole
-# instance unresponsive on the first deploy — AWS's own reachability check
-# failed, not just the app. A `docker compose down` here costs the deploy a
-# minute or two of downtime; for a ≤10-user MVP that is the correct trade
-# against the alternative, which was the box needing a manual reboot.
+# Stop before starting the new generation: this box has 2 GB of RAM and
+# cannot hold two sets of containers at once. The frontend build that made
+# this genuinely dangerous now happens in CI, so this is a short restart
+# rather than a build outage.
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 $COMPOSE down
-$COMPOSE build
+# The frontend image is built in CI and pulled; only the Python and NestJS
+# images are still built here, and neither needs anything like the RAM
+# `next build` did.
+$COMPOSE pull frontend
+$COMPOSE build api signals signals-worker signals-beat
 $COMPOSE up -d
 
 echo ""
