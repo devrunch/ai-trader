@@ -42,31 +42,20 @@ services:
       redis:
         condition: service_healthy
 
-  # ── Celery worker (runs screener tasks) ─────────────────────────────
-  signals-worker:
+
+  # ── News engine (hourly news + sentiment + per-headline impact) ─────
+  newsd:
     build:
       context: ./ai-trader-signals
       dockerfile: ../docker/signals/Dockerfile
-      target: worker
+      target: newsd
     env_file: ./ai-trader-signals/.env
     environment:
       API_SERVICE_URL: http://api:8000
     depends_on:
-      signals:
+      redis:
         condition: service_healthy
       api:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # ── Celery beat (schedules screener every 15 min market hours) ──────
-  signals-beat:
-    build:
-      context: ./ai-trader-signals
-      dockerfile: ../docker/signals/Dockerfile
-      target: beat
-    env_file: ./ai-trader-signals/.env
-    depends_on:
-      signals:
         condition: service_healthy
     restart: unless-stopped
 

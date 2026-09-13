@@ -46,12 +46,14 @@ done
 # this genuinely dangerous now happens in CI, so this is a short restart
 # rather than a build outage.
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
-$COMPOSE down
+# --remove-orphans: the Celery worker and beat containers are gone from the
+# compose file, and would otherwise keep running against the new code.
+$COMPOSE down --remove-orphans
 # The frontend image is built in CI and pulled; only the Python and NestJS
 # images are still built here, and neither needs anything like the RAM
 # `next build` did.
 $COMPOSE pull frontend
-$COMPOSE build api signals signals-worker signals-beat
+$COMPOSE build api signals newsd
 $COMPOSE up -d
 
 echo ""

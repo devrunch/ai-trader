@@ -4,6 +4,8 @@
 
 **Answer.** Yes, with room to spare. The box isn't too small. It's carrying about 490 MB of overhead that does no product work: the Docker runtime, and two extra copies of the Python interpreter for Celery. Removing that returns ~400 MB, which is more than the news engine needs.
 
+**Where this stands (2026-09-13).** Steps 0-4 of [§7](#7-the-order-to-do-it-in) have shipped, and Celery is gone: the six cheap jobs run from APScheduler inside `signals`, and the news pipeline runs in `newsd`, its own process, which idles at **36 MB** against the 283 MB the Celery worker and beat cost between them. `docs/CHECKLIST.md` tracks the rest.
+
 **How this was decided.** Two agents argued opposite positions against the real codebase: one for consolidating on the box, one for offloading periodic work to free external compute (Lambda, EventBridge, Cloudflare Workers). They then rebutted each other. Every number below was measured on the running box, not estimated. The debate, including what each side conceded, is in [§3](#3-the-debate).
 
 ---
@@ -246,8 +248,8 @@ Each step ships and can be reverted on its own. The first four are almost entire
 | 0 | Hygiene: prune build cache (−6.75 GB disk), disable unneeded OS services, Elastic IP, CPU credit alarm | ≈ −100 MB | none |
 | 1 | **Delete SQS.** The signal publisher becomes an HTTP POST to the API's internal endpoint (the pattern alerts and news already use). Remove the NestJS poller and the SQS readiness probe. Drop `kombu[sqs]` — **keep `boto3`, which `app/config.py` needs to sign Bedrock requests.** | small | low |
 | 2 | **Drop yfinance from the news path** (`macro_events.py` → direct HTTP), plus a test that fails if the news entrypoint imports pandas | −65 MB per news process | low: we now own changes to Yahoo's unofficial endpoint |
-| 3 | **APScheduler inside `signals`** for the cheap jobs. Run it alongside beat for a day and compare logs, then delete beat | −26 MB | low |
-| 4 | **`newsd` entrypoint** runs news analysis; delete the Celery worker | −257 MB, +90 MB | medium: the heaviest job moves |
+| 3 | **APScheduler inside `signals`** for the cheap jobs (shipped: beat kept only the news entry until step 4, so there was nothing to run alongside) | −26 MB | low |
+| 4 | **`newsd` entrypoint** runs news analysis; delete the Celery worker (shipped) | −257 MB, +36 MB idle | medium: the heaviest job moves |
 | 5 | `signals` and `newsd` move to systemd with the isolation knobs. API, frontend, Caddy and Redis stay in Compose for now | isolation in place | medium |
 | 6 | Frontend build moves to GitHub Actions; API, Caddy and Redis move to systemd; **remove Docker** | −206 MB | medium: one careful cutover |
 | 7 | Heartbeats, Healthchecks.io, UptimeRobot, and the deploy gate with rollback | — | low |
