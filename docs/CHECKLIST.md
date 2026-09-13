@@ -72,12 +72,12 @@ Order matters: each step creates the headroom the next one needs. Details: [arch
   - **Why:** it drags pandas into news for one HTTP call (+65 MB, measured).
   - **Done when:** `macro_events.py` uses a direct HTTP call, and a test fails if the news entrypoint imports pandas.
 
-- [ ] **B2 · APScheduler inside `signals` for the cheap jobs**
+- [x] **B2 · APScheduler inside `signals` for the cheap jobs** — 2026-09-13
   - **Why:** removes Celery beat, and allows second-precision event wake-ups.
   - **Done when:**
     - jobs run from APScheduler with the **Redis job store** (so a restart during 15:20 doesn't skip square-off);
-    - it runs alongside beat for a day with matching logs;
-    - beat is deleted.
+    - ~~it runs alongside beat for a day with matching logs~~ — cut: beat no longer holds these six entries at all, so there is nothing to run alongside. Beat keeps only `news-analysis` until B3 moves it to `newsd`;
+    - beat is deleted — **B3**, with the Celery worker.
 
 - [ ] **B3 · `newsd` process; delete the Celery worker**
   - **Why:** −283 MB for worker + beat; news gets its own failure domain.
@@ -178,6 +178,7 @@ Things only you can do, from an AWS or third-party account.
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
 
+- 2026-09-13 · B2 · The six cron jobs now run from APScheduler inside the `signals` process, on a Redis job store, in IST — Celery beat is down to `news-analysis` alone. Job bodies moved to `app/worker/jobs.py` as plain functions (the Redis store resolves jobs by import path); the Celery tasks are thin wrappers over the same functions, so both paths ping the same Healthchecks check. A scheduler that fails to start no longer takes the charts down with it. Live proof: deleted `apscheduler.jobs` in Redis, restarted only the signals container, and all 6 jobs reappeared with the right IST next-run times (square-off Mon 15:20). Also fixed: nothing configured logging in that process, so every app-level line was being dropped — including the scheduler's, and any job failure it reports. · `ai-trader-signals@220a110`, `ai-trader-signals@cde3f8e`
 - 2026-09-13 · B1 · News path no longer imports pandas: Yahoo headlines come from its RSS feed (which also carries the description the impact analysis uses) instead of yfinance, `prompts` needs pandas only as a type, and the Tavily tool import in `macro_events` is lazy. A test fails if pandas returns. Verified in the deployed worker: pandas and yfinance both absent, live run 25 articles, not degraded. · `ai-trader-signals@8d4527c`
 - 2026-09-13 · A2 · A malformed news batch now retries on Qwen3-235B instead of re-asking DeepSeek at temperature 0, which mostly repeats the same answer; a failed chunk discards 8 articles. · `ai-trader-signals@8d4527c`
 
