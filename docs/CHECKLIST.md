@@ -16,13 +16,13 @@ Small, low risk, worth doing first.
   - **Why:** `generate_bedrock_key` in `ai-trader-signals/app/config.py` signs with `Version=1` included, so AWS rejects the key. Production survives only because an explicit `BEDROCK_API_KEY` is set; if that key goes away, every AI feature fails.
   - **Done when:** a unit test covers the signing order, and a key minted from IAM credentials lists Mantle models (HTTP 200).
 
-- [ ] **F2 · Box hygiene** (no code)
-  - **Why:** 6.75 GB of Docker build cache fills a 78%-full disk; unused OS services cost ~100 MB.
+- [x] **F2 · Box hygiene** (no code) — 2026-09-13
+  - **Why:** Docker build cache was filling a 78%-full disk, and unused OS services were costing RAM.
   - **Done when:**
-    - build cache is pruned;
-    - `fwupd`, `ModemManager`, `udisks2` and `snapd` are disabled;
-    - ~~an Elastic IP is attached~~ already in place (`3.7.76.174`);
-    - a CloudWatch alarm exists on `CPUCreditBalance`.
+    - [x] unused images and old build cache pruned, keeping recent cache so deploys stay fast — disk 78% → 52% used;
+    - [x] `fwupd` (masked), `ModemManager`, `udisks2` and `multipathd` stopped and disabled — ~58 MB. `snapd` kept: the AWS SSM agent runs as a snap and is the fallback way into the box;
+    - [x] ~~Elastic IP~~ already in place (`3.7.76.174`);
+    - [x] CloudWatch alarms `ai-trader-cpu-surplus-charged` (surplus credits charged > 0) and `ai-trader-cpu-credit-balance-low` (balance < 50), both sending to SNS topic `ai-trader-ops-alerts` → your email. The instance is in unlimited credit mode; the balance was at its 576 maximum when they were set up.
 
 - [ ] **F3 · Delete SQS**
   - **Why:** the API polls an empty queue ~4,300 times a day, and an AWS blip on the readiness probe can break startup.
@@ -125,8 +125,12 @@ Order matters: each step creates the headroom the next one needs. Details: [arch
     - an explained alert goes out;
     - it's tested against a real past release, such as a PPI day.
 
-- [ ] **N4 · Telegram delivery**
-  - **Done when:** alerts reach a phone with the app closed, with no duplicate sends after a restart.
+- [ ] **N4 · Telegram alerts for users** (`@adizx_bot`)
+  - **Why:** market alerts should reach users with the app closed. This is a user feature, not monitoring — ops alerts stay on email.
+  - **Done when:**
+    - a user links Telegram from their profile (a deep link `t.me/adizx_bot?start=<one-time code>` ties the chat to their account);
+    - their chat ID is stored per user, and they can unlink;
+    - alerts they opted into reach the phone with the app closed, with no duplicate sends after a restart.
 
 - [ ] **N5 · TTL index on news documents**
   - **Done when:** per-article news expires after 30 days, keeping Atlas far below its 512 MB free cap (~2 MB today).
@@ -148,15 +152,21 @@ Things only you can do, from an AWS or third-party account.
 - [ ] **Anthropic use-case form** in the Bedrock console — unlocks Claude Haiku 4.5. Optional.
 - [ ] **AWS Sales / account maturity** for Claude Sonnet 5, Opus 5 and GPT-5.6 — optional, not self-serve.
 - [ ] **Service Quotas:** raise Amazon Nova's daily token quota — optional.
+- [x] **IAM:** `AmazonSNSFullAccess` attached to `ai-trader-dev`. (F2)
+- [ ] **Confirm the AWS email subscription** — click "Confirm subscription" in the email from AWS Notifications, or CPU alarms won't reach you. (F2)
 - [x] **Healthchecks.io and UptimeRobot** accounts, with API keys stored in the server `.env`. (B6)
-- [~] **Telegram bot** `@adizx_bot`: token is stored in the server `.env`. Waiting for you to press **Start** in t.me/adizx_bot so the chat ID can be read. (N4)
-- [ ] **Telegram in Healthchecks.io and UptimeRobot** — connect it in each dashboard's Integrations page. Both currently alert by email only.
+- [x] **Telegram bot** `@adizx_bot` — token in the server `.env`; your chat saved as `TELEGRAM_TEST_CHAT_ID` for testing, and a test message was delivered. (N4)
+- [-] **Telegram in Healthchecks.io and UptimeRobot** — dropped: monitoring alerts go to you by email; the Telegram bot is for users.
 - [ ] **GitHub Actions secrets** for deploying the frontend build. (B5)
 
 ---
 
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
+
+- 2026-09-13 · F2 · CPU credit alarms created and wired to SNS topic `ai-trader-ops-alerts` (email subscription pending your confirmation) · `aws cloudwatch describe-alarms`
+
+- 2026-09-13 · F2 (partial) · Pruned 1.13 GB of unused images and 3.98 GB of build cache (3.1 GB of recent cache kept); disabled fwupd (masked), ModemManager, udisks2 and multipathd (none in use). Disk 78% → 52% used (8.8 GB free); all 7 containers healthy, `/api/health` 200 afterwards. CPU alarms blocked on SNS permission. · `df -h`, `docker system df`, `systemctl is-enabled`
 
 - 2026-09-13 · F1 · Bedrock key signed without `Version=1` · test checks the signature against hand-computed SigV4; a key minted by the app listed 38 Mantle models (HTTP 200); `LlmClient` with no explicit key got a DeepSeek reply; full suite 583 passed · `ai-trader-signals@c6ffdf8`
 
