@@ -24,10 +24,11 @@ Small, low risk, worth doing first.
     - [x] ~~Elastic IP~~ already in place (`3.7.76.174`);
     - [x] CloudWatch alarms `ai-trader-cpu-surplus-charged` (surplus credits charged > 0) and `ai-trader-cpu-credit-balance-low` (balance < 50), both sending to SNS topic `ai-trader-ops-alerts` → your email. The instance is in unlimited credit mode; the balance was at its 576 maximum when they were set up.
 
-- [ ] **F3 · Delete SQS**
+- [x] **F3 · Delete SQS** — 2026-09-13, `ai-trader-signals@adfeb24`, `ai-trader-api@7218bde`
   - **Why:** the API polls an empty queue ~4,300 times a day, and an AWS blip on the readiness probe can break startup.
   - **Done when:**
     - the signal publisher POSTs to the API's internal endpoint;
+    - Celery's broker moves from SQS to the local Redis (found during the work: Celery was also on SQS);
     - the NestJS poller and the `/ready` SQS probe are gone;
     - `kombu[sqs]` is removed (**keep `boto3`**, which F1 needs);
     - all three test suites pass.
@@ -105,6 +106,19 @@ Order matters: each step creates the headroom the next one needs. Details: [arch
     - UptimeRobot watches `/health`;
     - `deploy.sh` lints and tests before restarting, and rolls back if `/health` fails.
 
+## CI/CD — GitHub Actions
+All four repos are public, so Actions minutes are free and unlimited.
+
+- [ ] **C1 · Tests on every push and pull request**
+  - **Why:** there's no CI; a broken commit is found at deploy time, on the live box.
+  - **Done when:** each repo runs its checks on push and PR — signals: `ruff` + `pytest`; api: `tsc` + `eslint` + `jest`; frontend: `tsc` + `eslint` + `vitest` — and a red run is visible on the commit.
+
+- [ ] **C2 · Deploy from GitHub**
+  - **Why:** deploying means SSH-ing in by hand and remembering to copy umbrella files first.
+  - **Done when:** a manual "Deploy" workflow (and optionally push to main, after C1 passes) SSHes in with a dedicated deploy key, restricted on the box to running `deploy.sh`, then checks `/api/health`.
+
+- [ ] **C3 · Build the frontend in Actions** — same as B5's first step: build Next.js off the box and rsync it, so deploys stop compiling on a 2 GB server.
+
 ---
 
 ## Phase 3 — Self-built news engine
@@ -163,6 +177,8 @@ Things only you can do, from an AWS or third-party account.
 
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
+
+- 2026-09-13 · F3 · SQS removed. Signals POST to `/api/internal/signals` (401 without key, 400 on bad payload, verified live); the API's SQS poller, `@aws-sdk/client-sqs` and AWS settings removed; Celery broker moved to Redis; readiness no longer probes SQS. Live: a job sent from the beat container through Redis ran on the worker in 3 s, and Healthchecks `drift-check` went 1 → 2 pings. Tests: signals 597, api 189. · `ai-trader-signals@adfeb24`, `ai-trader-api@7218bde`
 
 - 2026-09-13 · F2 · CPU credit alarms created and wired to SNS topic `ai-trader-ops-alerts` (email subscription pending your confirmation) · `aws cloudwatch describe-alarms`
 

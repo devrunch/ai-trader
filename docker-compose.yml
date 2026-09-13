@@ -27,7 +27,7 @@ services:
       # /ready, not /health. This healthcheck's only job in compose is the
       # `depends_on: service_healthy` gate below, and the point of a gate is
       # that dependents do not start against a signals service that cannot
-      # reach market data or SQS. /health is static liveness (it answers even
+      # reach market data. /health is static liveness (it answers even
       # when every dependency is down) and stays that way — Fargate's task
       # healthCheck uses it to decide whether to *kill* the container, and a
       # dependency outage must not do that.

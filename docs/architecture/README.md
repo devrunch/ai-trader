@@ -186,7 +186,7 @@ A cap alone is not enough, and the debate settled why. `MemoryMax` bounds `newsd
 ### Knowing when something silently stopped — the biggest gap today
 1. **In the app.** Every job writes `job:<name>:last_ok` to Redis. A sweeper checks each one against its interval × 2 and raises an alert.
 2. **Off the box.** Each job pings its own Healthchecks.io check on success (free: 20 checks), and a missed ping alerts. UptimeRobot (free: 50 monitors, 5-minute interval) watches `/health`.
-   - **Not** a scheduled GitHub Action: those bill per started minute, so a 5-minute prober would burn ~8,640 minutes a month against a 2,000-minute allowance.
+   - **Not** a scheduled GitHub Action. It would be free (the repos are public), but scheduled workflows run late under load and GitHub disables them after 60 days without repo activity — a watchdog needs to be more reliable than that.
 
 ### Deploys — seconds, one unit, with a way back
 - **Frontend:** built as Next.js `standalone` output in GitHub Actions, then rsynced. The box never compiles again. That removes today's full outage and the 7 GB of build cache.
@@ -219,7 +219,7 @@ If the balance trends down week over week, that's the signal to revisit offload 
 |---|---|---|---|
 | EC2 `t4g.small` | not free — already paid, ~$12/mo | same box | — |
 | MongoDB Atlas M0 | 512 MB | ~2 MB now; ~60 MB steady state with a 30-day TTL on news | ~8× |
-| GitHub Actions | 2,000 min/mo (private repos) | a frontend build per deploy, ~6 min × ~20/mo ≈ 120 min | ~16× |
+| GitHub Actions | unlimited — all four repos are public | CI on every push, plus a frontend build per deploy | no cap |
 | Healthchecks.io | 20 checks | ~9 (one per scheduled job) | 2× |
 | UptimeRobot | 50 monitors, 5 min | 2–3 | plenty |
 | Telegram Bot API | free | alert delivery | — |
