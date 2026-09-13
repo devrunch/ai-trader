@@ -35,10 +35,17 @@ fi
 PUBLIC_HOSTNAME="${PUBLIC_IP}.sslip.io"
 echo "Public hostname: $PUBLIC_HOSTNAME"
 
-# The units read this; nothing may hardcode a hostname that only exists once
-# the instance is running.
-printf 'PUBLIC_HOSTNAME=%s\nFRONTEND_URL=https://%s\n' "$PUBLIC_HOSTNAME" "$PUBLIC_HOSTNAME" \
-  > "$STATE/public.env"
+# Every unit reads this file LAST. systemd applies EnvironmentFile= after
+# Environment=, so a stale service .env wins over the unit -- which is exactly
+# how the API kept dialling the compose-era `redis` hostname after the cutover.
+cat > "$STATE/public.env" <<ENV
+PUBLIC_HOSTNAME=$PUBLIC_HOSTNAME
+FRONTEND_URL=https://$PUBLIC_HOSTNAME
+NODE_ENV=production
+REDIS_URL=redis://127.0.0.1:6379/0
+SIGNALS_SERVICE_URL=http://127.0.0.1:8001
+API_SERVICE_URL=http://127.0.0.1:8000
+ENV
 
 # Only the three service subdirectories are git repos — this directory itself
 # holds the deploy config (Caddyfile, units) as loose files, same as on the
@@ -82,6 +89,10 @@ API_SHA=$(git -C ai-trader-api rev-parse HEAD)
 if changed "$API_SHA" api.sha; then
   echo "API moved — installing and building"
   npm --prefix ai-trader-api ci
+  # nest-cli deletes dist/ before compiling, but tsconfig sets incremental: true --
+  # a surviving .tsbuildinfo then tells tsc everything is already emitted, and the
+  # build "succeeds" having written nothing at all.
+  rm -f ai-trader-api/*.tsbuildinfo
   npm --prefix ai-trader-api run build
   # Dev dependencies (TypeScript, Nest CLI) are build-time only and are a few
   # hundred MB of disk this box would rather keep.
@@ -162,6 +173,7 @@ if ! healthy; then
   if [ "$(git -C ai-trader-api rev-parse HEAD)" != "$PREVIOUS_API" ]; then
     git -C ai-trader-api reset -q --hard "$PREVIOUS_API"
     npm --prefix ai-trader-api ci
+    rm -f ai-trader-api/*.tsbuildinfo
     npm --prefix ai-trader-api run build
     npm --prefix ai-trader-api prune --omit=dev
     remember "$PREVIOUS_API" api.sha

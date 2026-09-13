@@ -11,12 +11,12 @@ Type=exec
 User=ubuntu
 WorkingDirectory=/home/ubuntu/ai-trader/ai-trader-signals
 EnvironmentFile=/home/ubuntu/ai-trader/ai-trader-signals/.env
-# Redis and the API are still containers, reached over their published
-# 127.0.0.1 ports rather than the compose network this process has left.
 Environment=PYTHONUNBUFFERED=1
 Environment=NUMBA_DISABLE_JIT=1
-Environment=API_SERVICE_URL=http://127.0.0.1:8000
-Environment=REDIS_URL=redis://127.0.0.1:6379/0
+# Last, and therefore the winner over anything stale in the .env above:
+# systemd applies EnvironmentFile= after Environment=, and this is where
+# deploy.sh writes the loopback addresses of the other services.
+EnvironmentFile=-/home/ubuntu/ai-trader/.deploy-state/public.env
 # 0.0.0.0, not 127.0.0.1: the API container has to reach this over the docker
 # bridge. The security group only admits 22, 80 and 443, so this port is not
 # reachable from outside the box.

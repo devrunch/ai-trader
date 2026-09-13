@@ -13,8 +13,10 @@ WorkingDirectory=/home/ubuntu/ai-trader/ai-trader-signals
 EnvironmentFile=/home/ubuntu/ai-trader/ai-trader-signals/.env
 Environment=PYTHONUNBUFFERED=1
 Environment=NUMBA_DISABLE_JIT=1
-Environment=API_SERVICE_URL=http://127.0.0.1:8000
-Environment=REDIS_URL=redis://127.0.0.1:6379/0
+# Last, and therefore the winner over anything stale in the .env above:
+# systemd applies EnvironmentFile= after Environment=, and this is where
+# deploy.sh writes the loopback addresses of the other services.
+EnvironmentFile=-/home/ubuntu/ai-trader/.deploy-state/public.env
 ExecStart=/home/ubuntu/ai-trader/venv-signals/bin/python -m app.worker.newsd
 Restart=always
 # A crash loop here would hammer the LLM and the news vendors; an hourly job
