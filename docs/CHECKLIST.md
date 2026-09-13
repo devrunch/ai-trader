@@ -151,6 +151,29 @@ All four repos are public, so Actions minutes are free and unlimited.
 
 ---
 
+## Phase 4 — Market data contract
+Spec: `docs/superpowers/specs/2026-09-13-market-data-contract-design.md`. One day produced three
+incidents (gold routed to an equity exchange, a weekend read as the end of history, a dead
+subprocess 404ing a chart) with one root: providers had no contract, so the router guessed.
+
+- [x] **M1 · Types, sessions, symbol resolution** — 2026-09-13
+  - **Done when:** a symbol's venue is resolved rather than guessed; each vendor declares its own limits; sessions can say whether a market was open; the conformance suite runs against every provider.
+
+- [x] **M2 · Router classifies, and the HTTP surface says both** — 2026-09-13
+  - **Done when:** `get_bars` returns a status with every answer, paging lives in one shared place, and the route carries an HTTP code *and* a machine-readable status.
+
+- [ ] **M3 · Port the providers onto the contract**
+  - **Why:** Kite and yfinance still return `None` for both "empty" and "failed", so that distinction is inferred rather than reported.
+  - **Done when:** each provider returns bars-or-reason itself, and the conformance suite asserts a vendor error never surfaces as `no_data`.
+
+- [ ] **M4 · The terminal shows the reason**
+  - **Why:** the API now explains an empty chart and nothing renders it.
+  - **Done when:** the chart distinguishes closed market (with next open), unlisted symbol and provider outage, and offers a retry only for the last.
+
+- [ ] **M5 · Circuit breaker and enrichment budget**
+  - **Why:** a broken Dukascopy bridge is retried on every request; enrichment that misses its budget should be dropped, not awaited.
+  - **Done when:** a vendor failing N times in a row is skipped for M minutes, and no enrichment can delay or fail a bars response.
+
 ## Later — product
 - [ ] Multi-currency paper account (US stocks and forex, not just NSE/BSE in rupees)
 - [ ] Crypto charts
@@ -178,6 +201,7 @@ Things only you can do, from an AWS or third-party account.
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
 
+- 2026-09-13 · M1 + M2 · The market data layer has a contract. A symbol's venue is resolved (`app/market/symbols.py`) instead of guessed from an `exchange` that three layers defaulted to NSE; each vendor declares its own limits, replacing a single global table of *yfinance's* numbers that had been clamping Kite to windows it serves happily; sessions (`app/market/sessions.py`) make an empty range explain itself; and the backward walk Deriv needed now lives in `app/market/paging.py` for the next vendor that cannot be asked for a range. Every answer carries a status, and the route reports both an HTTP code and a machine-readable one. Caught and fixed on the way: the classifier told a nonexistent symbol that NASDAQ was closed — a resolution is authoritative only when a listing table backs it. Live, all six outcomes correct: gold 1m/5d `ok` with 5282 bars, gold asked for on NSE `ok` as FOREX, RELIANCE 1m/365d clamped to 60, `2s` → 400 `unsupported_interval`, unlisted symbol → `no_data` naming both possibilities. 683 tests. · `ai-trader-signals@HEAD`, `ai-trader-api@HEAD`
 - 2026-09-13 · — · Box `.env` hygiene, and gold. The API's `.env` still carried the compose-era `redis` host, `NODE_ENV=development` and a localhost `FRONTEND_URL`, plus 16 keys the code no longer reads (every `ZERODHA_*`, `DHAN_*`, `ANGELONE_*`, `VAPID_*`, `AWS_*`, `SQS_*` — an env-key scan of the source shows it reads 13 keys in total); signals lost its `SQS_*`, `FINBERT_MODEL` and `HF_API_TOKEN` leftovers. Both files backed up on the box first. Then the 404 that exposed the real bug: `exchange` defaults to `NSE` in the frontend client, the NestJS controller *and* the FastAPI route, so anything that did not know an exchange asked for XAUUSD on the Indian equity exchange — 404 for bars, and live ticks failing closed, which is worse because the chart just never ticks. Deriv's pair table now beats the claimed exchange in both routers, and responses report the exchange they were actually served from so a saved layout cannot store the wrong one. Live: gold bars and quote 200 with `"exchange":"FOREX"` and no exchange given; RELIANCE unchanged on NSE. · `ai-trader-signals@1b53e48`, `ai-trader-signals@HEAD`
 - 2026-09-13 · B5 follow-up · Two traps the cutover walked into, both now fixed in the repo rather than on the box: systemd applies `EnvironmentFile=` **after** `Environment=`, so the stale service `.env` beat the unit and the API kept dialling the compose-era `redis` hostname — the cross-service wiring now lives in `.deploy-state/public.env`, which every unit reads last; and `nest build` deletes `dist/` while tsconfig sets `incremental: true`, so a surviving `.tsbuildinfo` made the build exit 0 having emitted nothing, which is what actually took the API down. `deploy.sh` removes it before building. The health gate caught both — the deploy failed loudly instead of shipping. · `journalctl -u ai-trader-api`, `/proc/<pid>/environ`
 - 2026-09-13 · B5 + B6 · **Docker is gone from the box.** API and frontend joined signals and newsd as systemd units; Caddy and Redis are distro packages; `dockerd`/`containerd` (451 MB resident at the time) were purged. The frontend is no longer an image — CI packs Next's standalone output (plus `static/` and `public/`, which it leaves outside that tree) into a release asset the box fetches with no credentials, since the deploy key is locked to a forced command and cannot receive files. Releases unpack to `frontend/releases/<sha>` behind a `current` symlink. `deploy.sh` rebuilds only what moved (venv on `requirements.txt`, Node subprojects on their lockfiles, API on its HEAD), health-gates the result, and rolls back on failure: symlink flip for the frontend, previous commit for API and signals. Caddy's existing Let's Encrypt cert was copied out of the docker volume, so nothing was re-issued. Live: memory used **1079 → 666 MB** (1168 MB available), disk **13 → 6.4 GB**, all six units active, site and `/api/health` 200, static assets 200, both schedulers' jobs re-registered in the new Redis with correct IST times. · `ai-trader@HEAD`, `ai-trader-frontend@6c67fe9`
