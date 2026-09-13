@@ -108,20 +108,40 @@ BUNDLE_URL=https://github.com/devrunch/ai-trader-frontend/releases/download/bund
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 PREVIOUS_FRONTEND=$(readlink -f "$ROOT/frontend/current" 2>/dev/null || true)
-if curl -fsSL -o "$TMP/frontend.tar.gz" "$BUNDLE_URL"; then
+
+# The asset is a rolling tag, and the CDN serves the previous copy of it for
+# a while after CI replaces it. Two deploys reported success while installing
+# nothing because of that, so the download is checked against the commit this
+# box just pulled rather than trusted.
+WANTED_FRONTEND=$(git -C ai-trader-frontend rev-parse HEAD)
+BUNDLE_SHA=
+for attempt in 1 2 3 4 5 6; do
+  curl -fsSL -H 'Cache-Control: no-cache' -o "$TMP/frontend.tar.gz" \
+    "$BUNDLE_URL?cachebust=$(date +%s%N)" || break
   tar xzf "$TMP/frontend.tar.gz" -C "$TMP" ./COMMIT
   BUNDLE_SHA=$(cat "$TMP/COMMIT")
-  if changed "$BUNDLE_SHA" frontend.sha; then
-    echo "New frontend bundle: $BUNDLE_SHA"
-    mkdir -p "$ROOT/frontend/releases/$BUNDLE_SHA"
-    tar xzf "$TMP/frontend.tar.gz" -C "$ROOT/frontend/releases/$BUNDLE_SHA"
-    ln -sfn "$ROOT/frontend/releases/$BUNDLE_SHA" "$ROOT/frontend/current"
-    remember "$BUNDLE_SHA" frontend.sha
-    # Two older releases stay, so a rollback has somewhere to go.
-    ls -1dt "$ROOT/frontend/releases"/*/ | tail -n +4 | xargs -r rm -rf
-  fi
-else
+  [ "$BUNDLE_SHA" = "$WANTED_FRONTEND" ] && break
+  echo "Bundle is ${BUNDLE_SHA:0:7}, this box is on ${WANTED_FRONTEND:0:7} — waiting for the new asset ($attempt/6)"
+  sleep 10
+done
+
+if [ -z "$BUNDLE_SHA" ]; then
   echo "Could not fetch the frontend bundle — keeping the installed one." >&2
+elif changed "$BUNDLE_SHA" frontend.sha; then
+  echo "New frontend bundle: $BUNDLE_SHA"
+  mkdir -p "$ROOT/frontend/releases/$BUNDLE_SHA"
+  tar xzf "$TMP/frontend.tar.gz" -C "$ROOT/frontend/releases/$BUNDLE_SHA"
+  ln -sfn "$ROOT/frontend/releases/$BUNDLE_SHA" "$ROOT/frontend/current"
+  remember "$BUNDLE_SHA" frontend.sha
+  # Two older releases stay, so a rollback has somewhere to go.
+  ls -1dt "$ROOT/frontend/releases"/*/ | tail -n +4 | xargs -r rm -rf
+fi
+
+if [ -n "$BUNDLE_SHA" ] && [ "$BUNDLE_SHA" != "$WANTED_FRONTEND" ]; then
+  # Not fatal: the frontend's own CI may still be building, and what is
+  # installed is a real bundle. But it is not this commit, and a deploy that
+  # says nothing here is how the last two shipped old code.
+  echo "WARNING: serving frontend ${BUNDLE_SHA:0:7}, not ${WANTED_FRONTEND:0:7}" >&2
 fi
 
 # ── Units ───────────────────────────────────────────────────────────────────
