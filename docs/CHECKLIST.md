@@ -46,7 +46,7 @@ Small, low risk, worth doing first.
     - the Home badge still renders.
   - `app/signals/sentiment.py` (hidden signals) moves when A4 happens.
 
-- [ ] **A2 · Fallback model for news impact**
+- [x] **A2 · Fallback model for news impact** — 2026-09-13
   - **Why:** a failed batch discards 8 articles. Retrying on a different model beats re-asking the same one.
   - **Done when:** on a failed chunk, the retry uses `qwen.qwen3-235b-a22b-2507`. A test covers a DeepSeek failure recovering via the fallback.
   - Evidence: [bake-off](how-it-works/README.md#7-which-model-is-best-the-bake-off-sep-2026).
@@ -68,7 +68,7 @@ Small, low risk, worth doing first.
 ## Phase 2 — Free-tier architecture
 Order matters: each step creates the headroom the next one needs. Details: [architecture plan §8](architecture/README.md#8-migration-order).
 
-- [ ] **B1 · Take yfinance out of the news path**
+- [x] **B1 · Take yfinance out of the news path** — 2026-09-13
   - **Why:** it drags pandas into news for one HTTP call (+65 MB, measured).
   - **Done when:** `macro_events.py` uses a direct HTTP call, and a test fails if the news entrypoint imports pandas.
 
@@ -177,6 +177,9 @@ Things only you can do, from an AWS or third-party account.
 
 ## Log
 Newest first. One line per shipped item: date · ID · what shipped · evidence.
+
+- 2026-09-13 · B1 · News path no longer imports pandas: Yahoo headlines come from its RSS feed (which also carries the description the impact analysis uses) instead of yfinance, `prompts` needs pandas only as a type, and the Tavily tool import in `macro_events` is lazy. A test fails if pandas returns. Verified in the deployed worker: pandas and yfinance both absent, live run 25 articles, not degraded. · `ai-trader-signals@8d4527c`
+- 2026-09-13 · A2 · A malformed news batch now retries on Qwen3-235B instead of re-asking DeepSeek at temperature 0, which mostly repeats the same answer; a failed chunk discards 8 articles. · `ai-trader-signals@8d4527c`
 
 - 2026-09-13 · C1 · CI on all three repos (free: the repos are public). signals: ruff + pytest (597); api: tsc + eslint + jest (189); frontend: tsc + eslint + vitest (185). Fixed what CI surfaced: 8 pre-existing lint errors, and a bare `pytest` that couldn't import `app`. The two media-query hooks now use `useSyncExternalStore` instead of reading matchMedia in an effect. All three runs green. · `ai-trader-signals@758b9cb`, `ai-trader-api@477b2c2`, `ai-trader-frontend@85e338a`
 
