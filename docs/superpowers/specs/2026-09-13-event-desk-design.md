@@ -37,6 +37,61 @@ pre-computed branch fired:
 This is the single most important decision in the document, and it is what makes a live
 desk viable on a 2 GB box with a cheap model.
 
+## Three classes of event, three mechanisms
+
+Not everything that moves gold is on a calendar. The design distinguishes:
+
+| class | examples | what is known | mechanism |
+|---|---|---|---|
+| **Scheduled** | CPI, NFP, FOMC, earnings | exact time, consensus | brief at T−2h, branch match at T+0 |
+| **Thread** | tariff reviews, wars, elections, OPEC, court rulings | topic and direction, not timing | stateful narrative, agent sets its own next check |
+| **Shock** | a strike, a resignation, an emergency cut | nothing, until it happens | detected in **price**, explained afterwards |
+
+Only the first has a `scheduled_at`, and an earlier draft of this document keyed
+everything on it — which silently excluded the entire second and third class.
+
+### Threads
+
+A thread is a stateful object, not a stream of articles: topic, affected
+instruments, a running summary of what has happened, the conditions that would
+change it, and a **next check time the agent chooses itself**. "US–China tariff
+review, decision due in the window Oct 15–Nov 1, gold bid on escalation
+headlines, check again in 8h."
+
+This is where agentic scheduling genuinely earns its cost. A scheduled event does
+not need an agent to decide when to look — the calendar says. A thread has no
+calendar, and a fixed poll is either too often (wasted tokens) or too rare
+(missed turn).
+
+Threads are opened three ways: the selector spots a dated decision with no fixed
+time, the shock detector finds something that recurs, or he asks for one
+("watch the tariff thing").
+
+### Shocks: price is the trigger, news is the explanation
+
+A shock shows up in **price first, or simultaneously** — that is what makes it a
+shock. So the detector is deterministic and costs nothing: a z-score of the
+current move against that instrument's own realised volatility, computed on the
+live tick stream this service already runs (`app/market/live_ticks.py`, Redis
+pub/sub). Gold moving 1.4% in eight minutes on a quiet Tuesday is a fact, not a
+judgement.
+
+Only then does the agent read, and only to answer one question: *why*. It
+searches wires and the recent firehose for anything published in the minutes
+before the move, and pushes: *"XAUUSD +1.4% in 8 min — Reuters and AP reporting
+X, three minutes ago. No scheduled event."*
+
+This inverts the coverage problem that motivated the original firehose design.
+Scanning thousands of headlines to guess which will matter has an unbounded false
+positive rate and can still miss the one that counts. Watching price cannot miss
+a shock that moved the market — and a shock that did not move the market is, for
+this user, not a shock. When the agent finds no explanation, it says so rather
+than inventing one: *"no cause found"* is a real answer and often the honest one
+for a liquidity air pocket.
+
+The firehose therefore has a defined job — feeding thread updates and answering
+"why did this move" — rather than being something he is expected to read.
+
 ## Components
 
 ### 1. Event ledger — the spine, never expired
@@ -153,6 +208,11 @@ briefs            event_key, branches[], claims[{text, evidence_ref}],
 outcomes          event_key, actual, surprise, realised_15m, realised_60m,
                   branch_fired, brief_estimate                              (permanent)
 profile           user_id, text, rules[], corrections[], version            (permanent)
+threads           topic, instruments[], summary, watch_for[], next_check_at,
+                  opened_by, history[]                                      (permanent)
+shocks            symbol, detected_at, move_pct, window_s, zscore,
+                  explanation, sources[], scheduled_event_ref               (permanent)
+vol_baseline      symbol, interval, realised_vol, updated_at                (rolling)
 articles          canonical_url, title, excerpt, published_at, source       (TTL 7d)
 ```
 
@@ -166,10 +226,20 @@ of articles a day; this design does not build that first, so the exception is no
 
 ## Cost
 
-Daily selection 2–5k tokens. Per-event research 10–20k. At ~10 armed events a week on
-DeepSeek V3.2, **under $0.25/month** — the budget debate turned out to be an artefact of the
-firehose design, not this one. Scraping is free. The only candidate spend is a calendar API
-if the scrape proves unreliable, and that decision waits for data.
+Daily selection 2–5k tokens. Per-event research 10–20k. Thread re-checks 3–8k each.
+Shock explanations 5–10k, and only when price actually moved abnormally — the detector
+itself is arithmetic and costs nothing.
+
+At ~10 armed events, ~15 thread checks and a handful of shocks a week on DeepSeek V3.2,
+**well under $1/month**. The budget debate turned out to be an artefact of the firehose
+design, not this one. Scraping is free. The only candidate spend is a calendar API if the
+scrape proves unreliable, and that decision waits for data.
+
+The shock detector's cost is worth stating separately because it is the one component with
+an unbounded trigger rate: a volatile session could fire it repeatedly. It is therefore
+rate-limited per instrument (one explanation per 30 minutes unless the move exceeds a
+second, higher threshold) and suppressed entirely in the window around a scheduled event,
+where the cause is already known and briefed.
 
 ## Phasing
 
@@ -177,10 +247,17 @@ if the scrape proves unreliable, and that decision waits for data.
    consensus, in his timezone.
 2. **Event window capture + Dukascopy backfill.** Provable: "gold's last 9 CPI reactions" as
    a number.
-3. **Selector + profile + skip log.** Provable: a daily agenda he can argue with.
-4. **Researcher + Telegram brief with buttons.** Provable: the T−2h brief, armed.
-5. **Outcome capture.** Provable: the brief scored against what happened.
-6. **Live matcher (phase B).** Provable: sub-2s branch push.
+3. **Shock detector.** Deterministic, no model, runs off the existing tick stream. Provable:
+   it fires on a real move and stays quiet on a normal session. Deliberately early — it is
+   the cheapest component and the only one that covers events nobody scheduled.
+4. **Selector + profile + skip log.** Provable: a daily agenda he can argue with.
+5. **Researcher + Telegram brief with buttons.** Provable: the T−2h brief, armed.
+6. **Threads.** Provable: a tariff narrative that updates itself and picks its own next check.
+7. **Outcome capture.** Provable: the brief scored against what happened.
+8. **Live matcher (phase C).** Provable: sub-2s branch push.
+
+Shock detection lands third rather than last because it is arithmetic over data we already
+stream, and because an unscheduled move is the case where he currently has nothing at all.
 
 Each step is useful alone, and steps 1–2 are useful even if every later step is abandoned.
 
@@ -194,7 +271,18 @@ Each step is useful alone, and steps 1–2 are useful even if every later step i
   distribution, and by the outcome record making systematic error visible.
 - **He does not engage at T−2h.** The whole design rests on him seeing branches before the
   event. If arming goes unused for a few weeks, the live matcher is not worth building —
-  check this before phase 6, not after.
+  check this before the last phase, not after.
+- **The shock detector cries wolf.** A thin-liquidity spike at the Sunday open is not news.
+  Mitigated by a realised-volatility baseline per instrument and per session (the same
+  session calendar the market data layer already owns), a per-instrument rate limit, and
+  suppression around scheduled events.
+- **A shock has no findable cause.** Frequently true — order flow, a large fill, a rumour on
+  a channel we do not read. The push says "no cause found" rather than reaching for the
+  nearest headline and asserting a connection. Inventing causation here is the single most
+  damaging thing this system could do to his trust in it.
+- **Threads go stale or multiply.** Each one carries a next-check time and an explicit
+  close condition; a thread with no update for its own stated horizon is closed and said to
+  be closed, not left rotting in a list.
 
 ## Open questions
 
@@ -204,3 +292,5 @@ Each step is useful alone, and steps 1–2 are useful even if every later step i
    brief, or stay in the terminal?
 3. Is the corrections log global or per event type? Per type is more precise; global is
    simpler and he is one user.
+4. What move size should wake him for an unexplained shock — 3σ, or a plain percentage
+   floor per instrument? A z-score adapts to regime but is harder to reason about at 3am.
